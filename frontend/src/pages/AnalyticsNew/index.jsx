@@ -44,16 +44,46 @@ export default function AnalyticsNew() {
   useEffect(() => {
     if (!data || !chartContainerRef.current) return;
 
-    const exchange = data.stock?.exchange || 'NASDAQ';
-    const exchangeStr = exchange.toUpperCase();
-    
-    let tvExchange = 'NASDAQ';
-    if (exchangeStr.includes('NYSE')) tvExchange = 'NYSE';
-    else if (exchangeStr.includes('NASDAQ')) tvExchange = 'NASDAQ';
-    else if (exchangeStr.includes('AMEX')) tvExchange = 'AMEX';
-    
     // Clean symbol (remove any special characters)
     const cleanSymbol = symbol.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    // Helper function to determine the correct TradingView exchange
+    const getTradingViewExchange = (stockSymbol, exchangeData) => {
+      // Known exchange mappings for common stocks
+      const knownExchanges = {
+        // NYSE stocks
+        'V': 'NYSE', 'BA': 'NYSE', 'DIS': 'NYSE', 'JPM': 'NYSE', 'WMT': 'NYSE',
+        'JNJ': 'NYSE', 'PG': 'NYSE', 'KO': 'NYSE', 'PFE': 'NYSE', 'XOM': 'NYSE',
+        'CVX': 'NYSE', 'T': 'NYSE', 'VZ': 'NYSE', 'BABA': 'NYSE', 'BAC': 'NYSE',
+        'WFC': 'NYSE', 'C': 'NYSE', 'GS': 'NYSE', 'MS': 'NYSE', 'UNH': 'NYSE',
+        'HD': 'NYSE', 'MCD': 'NYSE', 'NKE': 'NYSE', 'TMO': 'NYSE', 'UPS': 'NYSE',
+        // NASDAQ stocks
+        'AAPL': 'NASDAQ', 'MSFT': 'NASDAQ', 'GOOGL': 'NASDAQ', 'GOOG': 'NASDAQ',
+        'AMZN': 'NASDAQ', 'META': 'NASDAQ', 'TSLA': 'NASDAQ', 'NVDA': 'NASDAQ',
+        'NFLX': 'NASDAQ', 'INTC': 'NASDAQ', 'AMD': 'NASDAQ', 'CSCO': 'NASDAQ',
+        'AVGO': 'NASDAQ', 'QCOM': 'NASDAQ', 'ADBE': 'NASDAQ', 'TXN': 'NASDAQ',
+        'PYPL': 'NASDAQ', 'COST': 'NASDAQ', 'SBUX': 'NASDAQ', 'AMAT': 'NASDAQ',
+      };
+      
+      // Check if we have a known mapping
+      if (knownExchanges[stockSymbol]) {
+        return knownExchanges[stockSymbol];
+      }
+      
+      // Try to extract from exchange data
+      if (exchangeData) {
+        const exchangeStr = exchangeData.toUpperCase();
+        if (exchangeStr.includes('NYSE')) return 'NYSE';
+        if (exchangeStr.includes('NASDAQ')) return 'NASDAQ';
+        if (exchangeStr.includes('AMEX')) return 'AMEX';
+      }
+      
+      // Default to NASDAQ for most tech stocks
+      return 'NASDAQ';
+    };
+    
+    const exchange = data.stock?.exchange;
+    const tvExchange = getTradingViewExchange(cleanSymbol, exchange);
     const tradingViewSymbol = `${tvExchange}:${cleanSymbol}`;
     
     // Generate unique container ID
