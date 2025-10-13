@@ -83,10 +83,14 @@ class FinnhubClient extends BaseApiClient
             return null;
         }
         
+        // Normalize exchange data
+        $rawExchange = $data['exchange'] ?? null;
+        $normalizedExchange = $this->normalizeExchange($rawExchange);
+        
         return [
             'symbol' => $data['ticker'] ?? strtoupper($symbol),
             'name' => $data['name'] ?? null,
-            'exchange' => $data['exchange'] ?? null,
+            'exchange' => $normalizedExchange,
             'currency' => $data['currency'] ?? 'USD',
             'country' => $data['country'] ?? null,
             'industry' => $data['finnhubIndustry'] ?? null,
@@ -215,5 +219,71 @@ class FinnhubClient extends BaseApiClient
         }
         
         return $candles;
+    }
+    
+    /**
+     * Normalize exchange data from various formats to standard names
+     * 
+     * @param string|null $rawExchange Raw exchange value from API
+     * @return string|null Normalized exchange name
+     */
+    protected function normalizeExchange(?string $rawExchange): ?string
+    {
+        if (!$rawExchange) {
+            return null;
+        }
+        
+        $exchange = strtoupper(trim($rawExchange));
+        
+        // Common exchange mappings
+        $exchangeMap = [
+            // NYSE variations
+            'US' => 'NYSE',
+            'NEW YORK' => 'NYSE',
+            'NEW YORK STOCK EXCHANGE' => 'NYSE',
+            'XNYS' => 'NYSE',
+            
+            // NASDAQ variations
+            'NMS' => 'NASDAQ',
+            'NASDAQ CAPITAL MARKET' => 'NASDAQ',
+            'NASDAQ GLOBAL MARKET' => 'NASDAQ',
+            'NASDAQ GLOBAL SELECT' => 'NASDAQ',
+            'XNAS' => 'NASDAQ',
+            'NGM' => 'NASDAQ',
+            'NCM' => 'NASDAQ',
+            
+            // AMEX variations
+            'AMERICAN' => 'AMEX',
+            'AMERICAN STOCK EXCHANGE' => 'AMEX',
+            'XASE' => 'AMEX',
+            
+            // Other exchanges
+            'BATS' => 'BATS',
+            'ARCA' => 'NYSE ARCA',
+        ];
+        
+        // Check if it's already a known clean value
+        if (in_array($exchange, ['NYSE', 'NASDAQ', 'AMEX', 'BATS', 'NYSE ARCA'])) {
+            return $exchange;
+        }
+        
+        // Try to find in mapping
+        if (isset($exchangeMap[$exchange])) {
+            return $exchangeMap[$exchange];
+        }
+        
+        // Check if it contains keywords
+        if (str_contains($exchange, 'NYSE') || str_contains($exchange, 'NEW YORK')) {
+            return 'NYSE';
+        }
+        if (str_contains($exchange, 'NASDAQ')) {
+            return 'NASDAQ';
+        }
+        if (str_contains($exchange, 'AMEX') || str_contains($exchange, 'AMERICAN')) {
+            return 'AMEX';
+        }
+        
+        // Return as-is if we can't normalize
+        return $rawExchange;
     }
 }
