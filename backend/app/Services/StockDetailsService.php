@@ -61,7 +61,6 @@ class StockDetailsService
             'scenarios' => $scenarios,
             'prediction' => $quickPred,
         ];
-        ];
     }
 
     public function regenerateToday(string $symbol, string $horizon = 'today'): array
