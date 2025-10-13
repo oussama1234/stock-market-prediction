@@ -1,0 +1,226 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: market-prediction-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: market_prediction
+      MYSQL_USER: market_user
+      MYSQL_PASSWORD: market_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - market-prediction-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: market-prediction-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - market-prediction-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  # PHP-FPM (Backend)
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    container_name: market-prediction-php-fpm
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker/php-fpm/php.ini:/usr/local/etc/php/php.ini
+    networks:
+      - market-prediction-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: market_prediction
+      DB_USERNAME: market_user
+      DB_PASSWORD: market_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      NEWSAPI_KEY: ${NEWSAPI_KEY}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY}
+
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: market-prediction-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - nginx_logs:/var/log/nginx
+    networks:
+      - market-prediction-network
+    depends_on:
+      - php-fpm
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/api/ping"]
+      timeout: 3s
+      retries: 5
+
+  # Laravel Queue Worker
+  queue-worker:
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    container_name: market-prediction-queue-worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --tries=3 --timeout=90
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - market-prediction-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: market_prediction
+      DB_USERNAME: market_user
+      DB_PASSWORD: market_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      NEWSAPI_KEY: ${NEWSAPI_KEY}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY}
+
+  # Laravel Scheduler (Cron)
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./docker/php-fpm/Dockerfile
+    container_name: market-prediction-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction & sleep 60; done"
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - market-prediction-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: market_prediction
+      DB_USERNAME: market_user
+      DB_PASSWORD: market_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NEWSAPI_KEY: ${NEWSAPI_KEY}
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY}
+
+  # React Frontend (Development)
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    container_name: market-prediction-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - market-prediction-network
+    depends_on:
+      - nginx
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+      CHOKIDAR_USEPOLLING: "true"
+    stdin_open: true
+    tty: true
+
+  # phpMyAdmin (Optional - for database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: market-prediction-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+      UPLOAD_LIMIT: 50M
+    networks:
+      - market-prediction-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Redis Commander (Optional - for Redis management)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: market-prediction-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    networks:
+      - market-prediction-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  market-prediction-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_logs:
+    driver: local

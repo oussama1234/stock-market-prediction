@@ -1,0 +1,173 @@
+# Node modules
+frontend/node_modules/
+node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+build/
+dist/
+
+# Environment files
+backend/.env
+frontend/.env
+.env
+.env.local
+.env.*.local
+
+# Composer vendor
+backend/vendor/
+vendor/
+
+# Laravel specific
+backend/bootstrap/cache/*
+backend/storage/*.key
+backend/storage/*.log
+backend/storage/debugbar/
+backend/storage/framework/cache/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+!backend/storage/.gitkeep
+!backend/storage/app/.gitkeep
+!backend/storage/framework/.gitkeep
+!backend/storage/logs/.gitkeep
+
+# Laravel IDE helper
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Docker environment files
+docker-compose.override.yml
+docker-compose.*.yml
+!docker-compose.yml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+.phpintel/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+laravel.log
+
+# npm lock files (uncomment if you prefer yarn)
+# package-lock.json
+
+# Testing
+/coverage
+/.nyc_output
+.phpunit.result.cache
+phpunit.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/python/venv/
+backend/python/__pycache__/
+backend/python/*.pyc
+backend/python/.pytest_cache/
+*.egg-info/
+.eggs/
+
+# Machine Learning Models
+backend/python/models/*.pkl
+backend/python/models/*.h5
+backend/python/models/*.model
+backend/python/data/cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# API Keys and sensitive data (extra safeguard)
+*secret*
+*credentials*
+config/secrets/
+
+# Hot reload
+*.hot-update.*
+
+# Mac specific
+.Trashes
+.fseventsd
+.AppleDouble
+.LSOverride
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux specific
+.directory
+.Trash-*
+
+# Redis dump
+dump.rdb
+
+# Docker volumes
+docker/volumes/
+
+# Backup files
+*.bak
+*.backup
+*backup*
+
+# Generated documentation
+docs/_build/
+site/
+
+# Certificates
+*.pem
+*.crt
+*.key
+*.p12
+
+# Large data files
+*.csv
+*.tsv
+*.xls
+*.xlsx
+backend/storage/app/public/exports/
+
+# Sentry
+.sentryclirc
