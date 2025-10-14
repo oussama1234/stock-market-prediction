@@ -85,4 +85,33 @@ class Prediction extends Model
         if ($this->confidence_score >= 0.5) return 'medium';
         return 'low';
     }
+    
+    /**
+     * Accessor for expected_pct_move (alias for predicted_change_percent)
+     * This allows frontend to use consistent naming
+     */
+    public function getExpectedPctMoveAttribute(): ?float
+    {
+        return $this->predicted_change_percent ? (float) $this->predicted_change_percent : null;
+    }
+    
+    /**
+     * Accessor for previous_close from indicators_snapshot
+     * This is the persisted previous close used for prediction calculation
+     */
+    public function getPreviousCloseAttribute(): ?float
+    {
+        if (is_array($this->indicators_snapshot) && isset($this->indicators_snapshot['previous_close'])) {
+            return (float) $this->indicators_snapshot['previous_close'];
+        }
+        if (is_array($this->indicators_snapshot) && isset($this->indicators_snapshot['db_previous_close'])) {
+            return (float) $this->indicators_snapshot['db_previous_close'];
+        }
+        return null;
+    }
+    
+    /**
+     * Add expected_pct_move and previous_close to JSON serialization
+     */
+    protected $appends = ['expected_pct_move', 'previous_close'];
 }

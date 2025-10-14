@@ -392,6 +392,29 @@ class PredictionService
     {
         $latestPrice = $stock->latestPrice;
         
+        // CRITICAL: Get LIVE quote to calculate today's actual price change
+        $stockService = app(StockService::class);
+        $quote = $stockService->getQuote($stock->symbol);
+        $currentPrice = $quote['current_price'] ?? $latestPrice?->close ?? 100.0;
+        
+        // CRITICAL: Use db_previous_close (persisted at market close) as the baseline
+        // This is the accurate previous close stored in the database, NOT the API's previous_close
+        // Priority: db_previous_close > previous_close field from today's StockPrice > latestPrice->close
+        $previousClose = $quote['db_previous_close'] ?? $latestPrice?->previous_close ?? $quote['previous_close'] ?? $latestPrice?->close ?? 100.0;
+        
+        // Calculate TODAY'S actual price change from live data
+        $todayChangePercent = $previousClose > 0 ? (($currentPrice - $previousClose) / $previousClose) * 100 : 0.0;
+        
+        // Debug logging
+        Log::info("TODAY price change calculation for {$stock->symbol}", [
+            'current_price' => $currentPrice,
+            'previous_close' => $previousClose,
+            'db_previous_close' => $quote['db_previous_close'] ?? 'N/A',
+            'api_previous_close' => $quote['previous_close'] ?? 'N/A',
+            'today_change_pct' => round($todayChangePercent, 2),
+            'quote_keys' => array_keys($quote),
+        ]);
+        
         // Get news sentiment with normalization
         // Range: -10 to +10 in DB → normalize to -1 to +1 for model
         $rawSentiment = $stock->getAverageSentiment() ?? 0.0;
@@ -436,12 +459,22 @@ class PredictionService
         $close = $latestPrice?->close ?? 100.0;
         $volume = $latestPrice?->volume ?? 1000000;
         
+        // CRITICAL: Add stock category and volatility multiplier for sector-based predictions
+        // Technology stocks (NVDA, AVGO, TSLA) should have higher volatility (2-5% moves)
+        // Finance/Healthcare stocks should have lower volatility (1-2% moves)
+        $volatilityMultiplier = (float) ($stock->volatility_multiplier ?? 1.0);
+        $category = $stock->category ?? 'Unknown';
+        
         // Initialize base data
         $data = [
             'symbol' => $stock->symbol,
             'close' => $close,
+            'high' => $quote['high'] ?? $latestPrice?->high ?? $close,
+            'low' => $quote['low'] ?? $latestPrice?->low ?? $close,
             'volume' => $volume,
             'news_sentiment_score' => $sentiment,
+            'category' => $category,
+            'volatility_multiplier' => $volatilityMultiplier,
             'price_change_1d' => 0.0,
             'price_change_3d' => 0.0,
             'price_change_7d' => 0.0,
@@ -475,9 +508,13 @@ class PredictionService
             
             // Price changes
             if (count($closes) >= 7) {
-                $data['price_change_1d'] = $this->calculatePriceChangeFromArray($closes, 1);
+                // Use LIVE quote data for today's change (most important!)
+                $data['price_change_1d'] = $todayChangePercent;
                 $data['price_change_3d'] = $this->calculatePriceChangeFromArray($closes, 3);
                 $data['price_change_7d'] = $this->calculatePriceChangeFromArray($closes, 7);
+            } else {
+                // Fallback: still use live data for 1d even if not enough historical data
+                $data['price_change_1d'] = $todayChangePercent;
             }
             
             // RSI
@@ -536,6 +573,48 @@ class PredictionService
             Log::warning("Fear & Greed Index unavailable: " . $e->getMessage());
             $data['fear_greed_index'] = 50.0;
         }
+        
+        // CRITICAL: Get TODAY's news sentiment from database
+        // This is a KEY factor that adds daily volatility and context
+        $todayStart = now()->startOfDay();
+        $todayNews = $stock->newsArticles()
+            ->where('published_at', '>=', $todayStart)
+            ->whereNotNull('sentiment_score')
+            ->get();
+        
+        $todayNewsSentiment = $todayNews->avg('sentiment_score') ?? 0.0;
+        $todayNewsCount = $todayNews->count();
+        
+        // Normalize sentiment from DB scale (-10 to +10) to model scale (-1 to +1)
+        $normalizedTodayNews = $todayNewsSentiment / 10.0;
+        
+        $data['today_news_sentiment'] = $normalizedTodayNews;
+        $data['today_news_count'] = $todayNewsCount;
+        $data['today_news_raw_sentiment'] = $todayNewsSentiment; // Keep original for display
+        
+        Log::info("Today's news sentiment for {$stock->symbol}", [
+            'articles_count' => $todayNewsCount,
+            'raw_sentiment' => round($todayNewsSentiment, 2),
+            'normalized' => round($normalizedTodayNews, 3),
+            'bullish_articles' => $todayNews->where('sentiment_score', '>', 0)->count(),
+            'bearish_articles' => $todayNews->where('sentiment_score', '<', 0)->count(),
+        ]);
+        
+        // CRITICAL: Calculate local US influence score (similar to Asian/European markets)
+        // This gives local factors a strong, normalized signal to compete with global markets
+        $localInfluenceScore = $this->calculateLocalUSInfluenceScore($data, $normalizedTodayNews);
+        $data['local_us_influence_score'] = $localInfluenceScore;
+        
+        Log::info("Local US influence calculated for {$stock->symbol}", [
+            'local_influence_score' => round($localInfluenceScore, 3),
+            'factors' => [
+                'today_news' => round($normalizedTodayNews, 3),
+                'overall_sentiment' => round($sentiment, 3),
+                'rsi_14' => round($data['rsi_14'], 1),
+                'price_change_1d' => round($data['price_change_1d'], 2),
+                'macd' => round($data['macd'], 3),
+            ],
+        ]);
         
         // Detect potential rebound patterns for logging
         $isRebounding = false;
@@ -762,6 +841,169 @@ class PredictionService
         }
         
         return $obv;
+    }
+    
+    /**
+     * Calculate Local US Influence Score - UPGRADED VERSION
+     * 
+     * MAJOR CHANGE: Price action now dominates (65% weight) instead of news (was 60%)
+     * This fixes the issue where stocks like VISA +1.5% showed only +0.04 influence
+     * 
+     * NEW WEIGHT DISTRIBUTION:
+     * - Price Momentum: 30% (was 15%) - DOUBLED!
+     * - Relative Strength: 15% (NEW) - Outperformance vs market
+     * - Intraday Position: 10% (NEW) - Trading near highs/lows
+     * - Volume Confirmation: 10% (NEW) - High volume = conviction
+     * - Today's News: 20% (was 40%) - Still important
+     * - Technicals: 10% (was 20%) - RSI + MACD
+     * - Overall News: 5% (was 20%) - Background context
+     * 
+     * TOTAL: Price action = 65%, News = 25%, Technicals = 10%
+     * 
+     * @param array $data Stock technical data
+     * @param float $todayNewsSentiment Today's specific news sentiment (-1 to +1)
+     * @return float Influence score from -1 to +1
+     */
+    protected function calculateLocalUSInfluenceScore(array $data, float $todayNewsSentiment): float
+    {
+        $score = 0.0;
+        $close = $data['close'] ?? 100.0;
+        
+        // ═══════════════════════════════════════════════════════════
+        // 1. PRICE MOMENTUM (30% weight) - MOST IMPORTANT!
+        // ═══════════════════════════════════════════════════════════
+        $priceChange1d = $data['price_change_1d'] ?? 0.0;
+        $priceChange3d = $data['price_change_3d'] ?? 0.0;
+        
+        // CRITICAL: Reduced dampening from /5 to /3 for stronger signals
+        // 1-day momentum: 20% weight
+        $momentumScore = tanh($priceChange1d / 3) * 0.20;
+        
+        // 3-day trend: 10% weight
+        $momentumScore += tanh($priceChange3d / 8) * 0.10;
+        
+        // BOOST: Strong moves (>1%) get extra amplification
+        if (abs($priceChange1d) > 1.0) {
+            $boostFactor = min(abs($priceChange1d) / 5, 0.2); // Up to 0.2 boost
+            $momentumScore += $priceChange1d > 0 ? $boostFactor : -$boostFactor;
+        }
+        
+        $score += $momentumScore;
+        
+        // ═══════════════════════════════════════════════════════════
+        // 2. RELATIVE STRENGTH vs SPY (15% weight) - NEW!
+        // ═══════════════════════════════════════════════════════════
+        // Outperforming market = strong bullish signal
+        $spyChange = $this->getSPYChangePercent();
+        $relativeStrength = $priceChange1d - $spyChange;
+        // Example: VISA +1.5%, SPY -0.1% = +1.6% outperformance
+        
+        $relativeScore = tanh($relativeStrength / 3) * 0.15;
+        $score += $relativeScore;
+        
+        // ═══════════════════════════════════════════════════════════
+        // 3. INTRADAY POSITION (10% weight) - NEW!
+        // ═══════════════════════════════════════════════════════════
+        // Trading near high = bullish, near low = bearish
+        $dayHigh = $data['high'] ?? $close;
+        $dayLow = $data['low'] ?? $close;
+        
+        if ($dayHigh > $dayLow) {
+            // Position in today's range (0 = low, 0.5 = mid, 1 = high)
+            $intradayPosition = ($close - $dayLow) / ($dayHigh - $dayLow);
+            
+            // Convert to score: -0.3 (at low) to +0.3 (at high)
+            $intradayScore = ($intradayPosition - 0.5) * 0.6;
+            $score += $intradayScore * 0.10;
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        // 4. VOLUME CONFIRMATION (10% weight) - NEW!
+        // ═══════════════════════════════════════════════════════════
+        // High volume moves = strong conviction
+        $volumeRatio = $data['volume_sma_ratio'] ?? 1.0;
+        
+        if ($volumeRatio > 1.2) {
+            // High volume = amplify the price signal
+            $volumeConfirmation = min(($volumeRatio - 1.0) / 2, 0.5); // Up to 0.5
+            // Apply same direction as price move
+            $volumeScore = $priceChange1d > 0 ? $volumeConfirmation : -$volumeConfirmation;
+            $score += $volumeScore * 0.10;
+        } else if ($volumeRatio < 0.8) {
+            // Low volume = weaken all signals
+            $score *= 0.9;
+        }
+        
+        // ═══════════════════════════════════════════════════════════
+        // 5. TODAY'S NEWS SENTIMENT (20% weight) - REDUCED from 40%
+        // ═══════════════════════════════════════════════════════════
+        $todayNewsCount = $data['today_news_count'] ?? 0;
+        $todayNewsScore = $todayNewsSentiment * 0.20;
+        
+        // Boost if high news volume
+        if ($todayNewsCount >= 5) {
+            $todayNewsScore += $todayNewsSentiment * 0.05;
+        }
+        
+        $score += $todayNewsScore;
+        
+        // ═══════════════════════════════════════════════════════════
+        // 6. TECHNICAL INDICATORS (10% weight) - REDUCED from 20%
+        // ═══════════════════════════════════════════════════════════
+        $rsi14 = $data['rsi_14'] ?? 50.0;
+        $macd = $data['macd'] ?? 0.0;
+        
+        // RSI: 5% weight
+        $rsiScore = 0.0;
+        if ($rsi14 > 70) {
+            $rsiScore = -0.3 * (($rsi14 - 70) / 30);
+        } elseif ($rsi14 < 30) {
+            $rsiScore = 0.3 * ((30 - $rsi14) / 30);
+        } else {
+            $rsiScore = (50 - $rsi14) / 200;
+        }
+        $score += $rsiScore * 0.05;
+        
+        // MACD: 5% weight
+        $macdNormalized = ($macd / $close) * 100;
+        $macdScore = tanh($macdNormalized / 2);
+        $score += $macdScore * 0.05;
+        
+        // ═══════════════════════════════════════════════════════════
+        // 7. OVERALL NEWS SENTIMENT (5% weight) - REDUCED from 20%
+        // ═══════════════════════════════════════════════════════════
+        $overallSentiment = $data['news_sentiment_score'] ?? 0.0;
+        $score += $overallSentiment * 0.05;
+        
+        // ═══════════════════════════════════════════════════════════
+        // FINAL: Bound to -1..+1 range
+        // ═══════════════════════════════════════════════════════════
+        // Amplify before bounding to ensure strong signals come through
+        $boundedScore = tanh($score * 1.8); // Increased from 2 to 1.8 for better range
+        
+        return $boundedScore;
+    }
+    
+    /**
+     * Get SPY (S&P 500) change percent for relative strength calculation
+     * 
+     * @return float SPY change percent, or 0 if not available
+     */
+    protected function getSPYChangePercent(): float
+    {
+        try {
+            $marketIndexService = app(MarketIndexService::class);
+            $indices = $marketIndexService->getAllIndices();
+            
+            if (isset($indices['sp500']['change_percent'])) {
+                return (float) $indices['sp500']['change_percent'];
+            }
+            
+            return 0.0;
+        } catch (\Exception $e) {
+            Log::warning('Failed to get SPY change percent: ' . $e->getMessage());
+            return 0.0;
+        }
     }
     
     /**

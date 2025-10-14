@@ -14,6 +14,17 @@ Artisan::command('inspire', function () {
  * Schedule stock price updates during market hours
  * Market hours: 9:30 AM - 4:00 PM EST (Monday-Friday)
  */
+
+// IMPORTANT: Persist previous day's closing prices at 2 AM ET
+// This runs BEFORE market open to ensure accurate previous_close values
+// for the new trading day, preventing incorrect price change calculations
+Schedule::command('stocks:persist-previous-closes')
+    ->weekdays()
+    ->dailyAt('02:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Persist previous day closing prices as previous_close for accurate calculations');
+
 Schedule::command('stocks:update-prices --async')
     ->weekdays()
     ->hourly()
@@ -29,6 +40,47 @@ Schedule::command('stocks:update-prices --async')
     ->timezone('America/New_York')
     ->withoutOverlapping()
     ->description('Update final stock prices after market close');
+
+/**
+ * Market Indices Updates (S&P 500, NASDAQ, DOW)
+ * 
+ * Keep market indices fresh throughout the trading day
+ * These update more frequently than individual stocks for homepage display
+ */
+
+// Update every 15 minutes during market hours for real-time homepage data
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->cron('*/15 9-16 * * *') // Every 15 minutes from 9 AM to 4 PM
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Update market indices every 15 minutes during market hours');
+
+// Critical: Update right after market close to capture final values
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->dailyAt('16:05')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Update market indices after market close');
+
+// Pre-market update
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->dailyAt('08:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Pre-market indices update');
+
+// DEV MODE: Sync previous_close with close after market close
+// This keeps previous_close in sync with current close for dev/testing
+// Comment this out in production (only needed for development)
+Schedule::command('stocks:sync-previous-closes')
+    ->weekdays()
+    ->dailyAt('16:35')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('[DEV MODE] Sync previous_close with close after market close');
 
 /**
  * Auto-generate predictions for all stocks

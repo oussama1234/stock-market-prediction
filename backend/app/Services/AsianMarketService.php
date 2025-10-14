@@ -182,7 +182,15 @@ class AsianMarketService
         $maxImpact = config('prediction.influence_scales.asian.max_impact', 0.2);
         $asianImpactPercent = abs($asianInfluenceScore) * $maxImpact;
         
+        // Determine sentiment based on average change
+        $sentiment = $asianAvgChange > 0.5 ? 'positive' : ($asianAvgChange < -0.5 ? 'negative' : 'neutral');
+        
         return [
+            // Python model V5 expected fields
+            'asian_market_change' => $asianAvgChange,           // Primary field for Python model
+            'asian_market_sentiment' => $sentiment,             // Primary field for Python model
+            
+            // Legacy fields for backward compatibility
             'asian_avg_change' => $asianAvgChange,
             'asian_influence_score' => $asianInfluenceScore,
             'asian_impact_percent' => $asianImpactPercent,

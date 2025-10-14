@@ -46,10 +46,15 @@ class MarketController extends Controller
     /**
      * Get Market Indices (S&P 500, NASDAQ, DOW)
      * GET /api/market/indices
+     * 
+     * Auto-updates stale data to ensure homepage always shows fresh values
      */
     public function indices(): JsonResponse
     {
         try {
+            // Check if indices are stale and auto-update if needed
+            $this->autoUpdateStaleIndices();
+            
             $indices = $this->marketIndexService->getAllIndices();
             
             return response()->json([
@@ -63,6 +68,59 @@ class MarketController extends Controller
                 'message' => 'Unable to fetch market indices at this time',
                 'data' => [],
             ], 200);
+        }
+    }
+    
+    /**
+     * Auto-update indices if data is stale
+     * 
+     * During market hours (9:30 AM - 4:00 PM ET): Update if older than 5 minutes
+     * After hours: Update if older than 30 minutes
+     */
+    protected function autoUpdateStaleIndices(): void
+    {
+        try {
+            $indices = $this->marketIndexService->getAllIndices();
+            
+            // Check if any index exists and get the oldest update time
+            $oldestUpdate = null;
+            foreach ($indices as $index) {
+                if (isset($index['last_updated'])) {
+                    $updateTime = \Carbon\Carbon::parse($index['last_updated']);
+                    if (!$oldestUpdate || $updateTime->lt($oldestUpdate)) {
+                        $oldestUpdate = $updateTime;
+                    }
+                }
+            }
+            
+            // If no indices or no update time, force update
+            if (!$oldestUpdate) {
+                \Log::info('No market indices found or no update time - forcing update');
+                $this->marketIndexService->updateAllIndices();
+                return;
+            }
+            
+            // Determine staleness threshold based on market hours
+            $now = \Carbon\Carbon::now('America/New_York');
+            $marketOpen = $now->copy()->setTime(9, 30);
+            $marketClose = $now->copy()->setTime(16, 0);
+            
+            $isMarketHours = $now->isWeekday() && $now->between($marketOpen, $marketClose);
+            $staleThreshold = $isMarketHours ? 5 : 30; // 5 minutes during market hours, 30 after
+            
+            $minutesSinceUpdate = $oldestUpdate->diffInMinutes($now);
+            
+            if ($minutesSinceUpdate >= $staleThreshold) {
+                \Log::info("Market indices stale (last update: {$minutesSinceUpdate} min ago) - auto-updating", [
+                    'is_market_hours' => $isMarketHours,
+                    'threshold' => $staleThreshold,
+                    'oldest_update' => $oldestUpdate->toDateTimeString(),
+                ]);
+                $this->marketIndexService->updateAllIndices();
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to auto-update stale indices: ' . $e->getMessage());
+            // Don't throw - let the request continue with potentially stale data
         }
     }
     

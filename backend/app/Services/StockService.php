@@ -284,30 +284,51 @@ class StockService
                 $quote['next_open_estimate'] = $base !== null ? round((float)$base, 2) : null;
             }
 
-            // Calculate change from last saved close in database (for accurate since-last-check comparison)
-            // This provides a more meaningful "change since we last looked" value vs API's "change since yesterday"
+            // CRITICAL: Use TODAY's previous_close field (persisted at market close)
+            // This is the correct previous close that was stored when market closed yesterday
             $stock = Stock::where('symbol', $symbol)->first();
             if ($stock && $current) {
-                // Get the last saved close price (excluding today)
-                $lastSavedPrice = StockPrice::where('stock_id', $stock->id)
+                // Get TODAY's price record which contains the persisted previous_close
+                $todayPrice = StockPrice::where('stock_id', $stock->id)
                     ->where('interval', '1day')
-                    ->where('price_date', '<', now()->toDateString())
-                    ->whereNotNull('close')
-                    ->orderBy('price_date', 'desc')
+                    ->where('price_date', '=', now()->toDateString())
+                    ->whereNotNull('previous_close')
                     ->first();
                 
-                if ($lastSavedPrice && $lastSavedPrice->close) {
-                    $lastClose = (float) $lastSavedPrice->close;
-                    $dbChange = $current - $lastClose;
-                    $dbChangePct = $lastClose > 0 ? ($dbChange / $lastClose) * 100 : 0;
+                if ($todayPrice && $todayPrice->previous_close) {
+                    // Use the persisted previous_close from today's record
+                    $previousClose = (float) $todayPrice->previous_close;
+                    $dbChange = $current - $previousClose;
+                    $dbChangePct = $previousClose > 0 ? ($dbChange / $previousClose) * 100 : 0;
                     
                     // Add database-based change values
-                    $quote['db_previous_close'] = round($lastClose, 2);
+                    $quote['db_previous_close'] = round($previousClose, 2);
                     $quote['db_change'] = round($dbChange, 2);
                     $quote['db_change_percent'] = round($dbChangePct, 2);
-                    $quote['db_last_check_date'] = $lastSavedPrice->price_date;
+                    $quote['db_last_check_date'] = $todayPrice->price_date;
                     
-                    Log::info("Calculated DB-based change for {$symbol}: Last saved close={$lastClose}, Current={$current}, Change={$dbChange} ({$dbChangePct}%)");
+                    Log::info("Using persisted previous_close for {$symbol}: Previous={$previousClose}, Current={$current}, Change={$dbChange} ({$dbChangePct}%)");
+                } else {
+                    // Fallback: use yesterday's close if today's previous_close is not set
+                    $lastSavedPrice = StockPrice::where('stock_id', $stock->id)
+                        ->where('interval', '1day')
+                        ->where('price_date', '<', now()->toDateString())
+                        ->whereNotNull('close')
+                        ->orderBy('price_date', 'desc')
+                        ->first();
+                    
+                    if ($lastSavedPrice && $lastSavedPrice->close) {
+                        $lastClose = (float) $lastSavedPrice->close;
+                        $dbChange = $current - $lastClose;
+                        $dbChangePct = $lastClose > 0 ? ($dbChange / $lastClose) * 100 : 0;
+                        
+                        $quote['db_previous_close'] = round($lastClose, 2);
+                        $quote['db_change'] = round($dbChange, 2);
+                        $quote['db_change_percent'] = round($dbChangePct, 2);
+                        $quote['db_last_check_date'] = $lastSavedPrice->price_date;
+                        
+                        Log::warning("Fallback to yesterday's close for {$symbol}: Last saved close={$lastClose}, Current={$current}");
+                    }
                 }
             }
 

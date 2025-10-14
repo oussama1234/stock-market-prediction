@@ -75,13 +75,14 @@ class QuickModelV4:
         
         # Feature names for validation
         self.base_features = [
-            'close', 'volume', 'price_change_1d', 'price_change_3d', 'price_change_7d',
+            'close', 'high', 'low', 'volume', 'price_change_1d', 'price_change_3d', 'price_change_7d',
             'ema_12', 'ema_26', 'macd', 'macd_signal', 'macd_hist',
             'rsi_14', 'rsi_7', 'atr_14', 'obv',
             'bb_upper', 'bb_middle', 'bb_lower', 'bb_width', 'bb_pct',
             'distance_to_support', 'distance_to_resistance',
             'volume_sma_ratio', 'volume_spike',
-            'news_sentiment_score', 'fear_greed_index'
+            'news_sentiment_score', 'fear_greed_index',
+            'today_news_sentiment', 'today_news_count'  # Added for upgraded local US factors
         ]
         
         self.asian_features = [
@@ -183,8 +184,15 @@ class QuickModelV4:
         asian_influence_score = features.get('asian_influence_score', 0)
         asian_avg_change = features.get('asian_avg_change', 0)
         
-        # Base model prediction (represents local US factors)
-        if self.base_model is None:
+        # CRITICAL: Use pre-calculated local_us_influence_score from backend
+        # This score already combines news sentiment, technicals, momentum, and Fear & Greed
+        # It's normalized like Asian/European scores for fair comparison
+        local_us_influence_score = features.get('local_us_influence_score', None)
+        
+        if local_us_influence_score is not None:
+            # Use the pre-calculated score (PREFERRED method)
+            local_score = local_us_influence_score
+        elif self.base_model is None:
             # Fallback: simple rule-based prediction
             local_score = self._fallback_prediction(features)
         else:
@@ -253,11 +261,16 @@ class QuickModelV4:
         # Determine label
         label = 'BULLISH' if final_score_with_correction > 0 else 'BEARISH'
         
-        # Calculate expected move
+        # CRITICAL: Get volatility multiplier for sector-based predictions
+        volatility_multiplier = float(features.get('volatility_multiplier', 1.0))
+        category = features.get('category', 'Unknown')
+        
+        # Calculate expected move with volatility multiplier
         expected_pct_move = self._calculate_expected_move(
             final_score_with_correction,
             features.get('atr_14', 0),
-            features.get('bb_width', 0)
+            features.get('bb_width', 0),
+            volatility_multiplier
         )
         
         # Generate top reasons (include market influences)
@@ -305,6 +318,15 @@ class QuickModelV4:
         for feature in self.european_features:
             validated[feature] = features.get(feature, 0.0)
         
+        # CRITICAL: Preserve non-feature metadata like volatility_multiplier and category
+        # These are used for sector-aware predictions but are NOT training features
+        if 'volatility_multiplier' in features:
+            validated['volatility_multiplier'] = features['volatility_multiplier']
+        if 'category' in features:
+            validated['category'] = features['category']
+        if 'symbol' in features:
+            validated['symbol'] = features['symbol']
+        
         return validated
     
     def _dict_to_array(self, features):
@@ -316,45 +338,114 @@ class QuickModelV4:
         return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
     
     def _fallback_prediction(self, features):
-        """Simple rule-based fallback when model not available"""
+        """
+        UPGRADED: Rule-based fallback with price action priority
+        
+        Matches PHP weight distribution:
+        - Price momentum: 30%
+        - Relative strength: 15%
+        - Intraday position: 10%
+        - Volume: 10%
+        - Today's news: 20%
+        - Technicals: 10%
+        - Overall news: 5%
+        """
         score = 0
         
-        # CRITICAL: Detect rebound pattern (most important)
-        rebound_score = self._detect_rebound_pattern(features)
-        if rebound_score != 0:
-            # Rebound patterns get highest priority
-            score += rebound_score * 0.6
-        
-        # News sentiment (increased weight for rebounds)
-        news_sentiment = features.get('news_sentiment_score', 0)
-        if abs(news_sentiment) > 0:
-            # If news is positive and we have rebound, amplify it
-            if rebound_score > 0 and news_sentiment > 0:
-                score += np.clip(news_sentiment * 0.5, 0, 0.5)
-            else:
-                score += np.clip(news_sentiment * 0.3, -0.3, 0.3)
-        
-        # RSI contribution
-        rsi = features.get('rsi_14', 50)
-        if rsi > 70:
-            # Don't penalize as much if there's strong positive news/rebound
-            if news_sentiment > 0.3 or rebound_score > 0.3:
-                score -= 0.1
-            else:
-                score -= 0.25
-        elif rsi < 30:
-            score += 0.3
-        
-        # MACD contribution
-        macd_hist = features.get('macd_hist', 0)
-        score += np.clip(macd_hist / 10, -0.2, 0.2)
-        
-        # Price momentum
+        # ================================================================
+        # 1. PRICE MOMENTUM (30% weight) - MOST IMPORTANT!
+        # ================================================================
         price_change_1d = features.get('price_change_1d', 0)
         price_change_3d = features.get('price_change_3d', 0)
         
-        score += np.clip(price_change_1d / 50, -0.2, 0.2)
-        score += np.clip(price_change_3d / 150, -0.15, 0.15)
+        # Reduced dampening for stronger signals
+        momentum_score = np.tanh(price_change_1d / 3) * 0.20  # 1-day: 20%
+        momentum_score += np.tanh(price_change_3d / 8) * 0.10  # 3-day: 10%
+        
+        # BOOST: Strong moves (>1%) get extra amplification
+        if abs(price_change_1d) > 1.0:
+            boost_factor = min(abs(price_change_1d) / 5, 0.2)
+            momentum_score += boost_factor if price_change_1d > 0 else -boost_factor
+        
+        score += momentum_score
+        
+        # ================================================================
+        # 2. RELATIVE STRENGTH vs market (15% weight)
+        # ================================================================
+        # Simplified: Just use absolute momentum since we may not have SPY data
+        # In production, would compare to SPY change
+        relative_strength = price_change_1d * 0.15  # Approximate
+        score += np.clip(relative_strength, -0.15, 0.15)
+        
+        # ================================================================
+        # 3. INTRADAY POSITION (10% weight)
+        # ================================================================
+        close = features.get('close', 100)
+        high = features.get('high', close)
+        low = features.get('low', close)
+        
+        if high > low:
+            intraday_position = (close - low) / (high - low)
+            intraday_score = (intraday_position - 0.5) * 0.6
+            score += intraday_score * 0.10
+        
+        # ================================================================
+        # 4. VOLUME CONFIRMATION (10% weight)
+        # ================================================================
+        volume_ratio = features.get('volume_sma_ratio', 1.0)
+        
+        if volume_ratio > 1.2:
+            volume_confirmation = min((volume_ratio - 1.0) / 2, 0.5)
+            volume_score = volume_confirmation if price_change_1d > 0 else -volume_confirmation
+            score += volume_score * 0.10
+        elif volume_ratio < 0.8:
+            score *= 0.9  # Reduce all signals
+        
+        # ================================================================
+        # 5. TODAY'S NEWS SENTIMENT (20% weight)
+        # ================================================================
+        today_news_sentiment = features.get('today_news_sentiment', 0)
+        today_news_count = features.get('today_news_count', 0)
+        
+        today_news_score = today_news_sentiment * 0.20
+        if today_news_count >= 5:
+            today_news_score += today_news_sentiment * 0.05
+        
+        score += today_news_score
+        
+        # ================================================================
+        # 6. TECHNICAL INDICATORS (10% weight)
+        # ================================================================
+        rsi = features.get('rsi_14', 50)
+        macd_hist = features.get('macd_hist', 0)
+        
+        # RSI: 5% weight
+        rsi_score = 0
+        if rsi > 70:
+            rsi_score = -0.3 * ((rsi - 70) / 30)
+        elif rsi < 30:
+            rsi_score = 0.3 * ((30 - rsi) / 30)
+        else:
+            rsi_score = (50 - rsi) / 200
+        
+        score += rsi_score * 0.05
+        
+        # MACD: 5% weight
+        score += np.clip(macd_hist / 10, -0.05, 0.05)
+        
+        # ================================================================
+        # 7. OVERALL NEWS SENTIMENT (5% weight)
+        # ================================================================
+        news_sentiment = features.get('news_sentiment_score', 0)
+        score += news_sentiment * 0.05
+        
+        # ================================================================
+        # BONUS: Rebound patterns (can override)
+        # ================================================================
+        rebound_score = self._detect_rebound_pattern(features)
+        if rebound_score > 0.5:
+            # Strong rebound detected - boost signal
+            score += rebound_score * 0.2
         
         return np.clip(score, -1, 1)
     
@@ -481,39 +572,54 @@ class QuickModelV4:
             'severity': 'HIGH' if correction_score > 60 else 'MODERATE' if correction_score > 30 else 'LOW'
         }
     
-    def _calculate_expected_move(self, final_score, atr, bb_width):
+    def _calculate_expected_move(self, final_score, atr, bb_width, volatility_multiplier=1.0):
         """
-        Calculate expected percentage move - AGGRESSIVE for strong momentum/rebounds
+        Calculate expected percentage move - SECTOR-AWARE with volatility multipliers
         
         Args:
             final_score: Ensemble score (-1 to +1)
             atr: Average True Range
             bb_width: Bollinger Band width
+            volatility_multiplier: Stock category multiplier (1.0=normal, 2.0=tech giants)
         """
         base_magnitude = abs(final_score)
         
-        # MUCH MORE AGGRESSIVE ranges - stocks can move 5-15% on strong signals
+        # Base ranges for predictions - INCREASED for tech stocks
+        # With 1.5-2.5x multipliers, even weak signals should produce 2%+ moves
         if base_magnitude > 0.8:
-            # Very strong signal - expect major moves (5-12%)
+            # Very strong signal - expect major moves
             expected_range = (5.0, 12.0)
         elif base_magnitude > 0.6:
-            # Strong signal - expect significant moves (3-8%)
-            expected_range = (3.0, 8.0)
+            # Strong signal - expect significant moves
+            expected_range = (3.5, 8.0)
         elif base_magnitude > 0.4:
-            # Moderate-strong signal (2-5%)
-            expected_range = (2.0, 5.0)
+            # Moderate-strong signal
+            expected_range = (2.5, 5.0)
         elif base_magnitude > 0.2:
-            # Moderate signal (1-3%)
-            expected_range = (1.0, 3.0)
+            # Moderate signal - CRITICAL for most predictions
+            # Base 1.5% * 1.8x multiplier = 2.7% ✅
+            expected_range = (1.5, 3.5)
         else:
-            # Weak signal (0.5-1.5%)
-            expected_range = (0.5, 1.5)
+            # Weak signal - even here, tech should be 2%+
+            # Base 1.2% * 1.8x = 2.16% ✅
+            expected_range = (1.2, 2.0)
         
-        # Interpolate
-        expected_move = expected_range[0] + (expected_range[1] - expected_range[0]) * base_magnitude
+        # Interpolate base move
+        base_move = expected_range[0] + (expected_range[1] - expected_range[0]) * base_magnitude
         
-        # Apply direction
-        return expected_move if final_score > 0 else -expected_move
+        # CRITICAL: Apply volatility multiplier for stock category
+        # Technology stocks (NVDA: 2.0x, AVGO: 1.8x, TSLA: 2.5x) get amplified predictions
+        # Finance/Healthcare stocks (1.0-1.2x) get standard predictions
+        expected_move = base_move * volatility_multiplier
+        
+        # ENFORCE minimum 2% for tech mega-caps (multiplier >= 1.5)
+        # This ensures tech giants always have realistic volatile predictions
+        if volatility_multiplier >= 1.5 and abs(expected_move) < 2.0:
+            expected_move = 2.0  # Minimum 2% magnitude
+        
+        # Apply direction based on final_score sign
+        final_move = expected_move if final_score >= 0 else -expected_move
+        return final_move
     
     def _generate_reasons(self, features, final_score, european_influence, 
                          asian_influence, local_score, correction_warning):

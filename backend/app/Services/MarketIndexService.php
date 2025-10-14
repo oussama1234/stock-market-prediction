@@ -116,14 +116,26 @@ class MarketIndexService
                 ]);
             }
 
+            // CRITICAL: Use db_change_percent (calculated from persisted previous_close) instead of API change_percent
+            // The API change_percent is often incorrect, especially after market close
+            // Priority: db_change_percent > db_change > API values
+            $changePercent = $quote['db_change_percent'] ?? $quote['change_percent'] ?? null;
+            $change = $quote['db_change'] ?? $quote['change'] ?? null;
+            
+            Log::info("Market index {$symbol} change values", [
+                'api_change_percent' => $quote['change_percent'] ?? 'N/A',
+                'db_change_percent' => $quote['db_change_percent'] ?? 'N/A',
+                'used_change_percent' => $changePercent,
+            ]);
+            
             // Calculate momentum and trend
-            $momentumData = $this->calculateMomentumAndTrend($index, $quote);
+            $momentumData = $this->calculateMomentumAndTrend($index, $quote, $changePercent);
 
             // Update the index with new data
             $index->update([
                 'current_price' => $quote['current_price'],
-                'change' => $quote['change'] ?? null,
-                'change_percent' => $quote['change_percent'] ?? null,
+                'change' => $change,
+                'change_percent' => $changePercent,
                 'volume' => $quote['volume'] ?? null,
                 'avg_volume' => $quote['avg_volume'] ?? null,
                 'day_high' => $quote['high'] ?? null,
@@ -151,9 +163,10 @@ class MarketIndexService
     /**
      * Calculate momentum and trend for an index
      */
-    protected function calculateMomentumAndTrend(MarketIndex $index, array $quote): array
+    protected function calculateMomentumAndTrend(MarketIndex $index, array $quote, ?float $changePercent = null): array
     {
-        $changePercent = $quote['change_percent'] ?? 0;
+        // Use provided changePercent (already corrected), or fallback to quote value
+        $changePercent = $changePercent ?? $quote['db_change_percent'] ?? $quote['change_percent'] ?? 0;
         $currentPrice = $quote['current_price'];
 
         // Initialize result

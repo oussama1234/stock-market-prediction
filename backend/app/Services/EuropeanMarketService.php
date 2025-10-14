@@ -182,10 +182,15 @@ class EuropeanMarketService
         $maxImpact = config('prediction.influence_scales.european.max_impact', 0.3);
         $europeanImpactPercent = abs($europeanInfluenceScore) * $maxImpact;
         
-        // Determine sentiment
-        $sentiment = $europeanAvgChange > 0.5 ? 'bullish' : ($europeanAvgChange < -0.5 ? 'bearish' : 'neutral');
+        // Determine sentiment - use 'positive'/'negative' to match Python model expectations
+        $sentiment = $europeanAvgChange > 0.5 ? 'positive' : ($europeanAvgChange < -0.5 ? 'negative' : 'neutral');
         
         return [
+            // Python model V5 expected fields
+            'european_market_change' => $europeanAvgChange,         // Primary field for Python model
+            'european_market_sentiment' => $sentiment,              // Primary field for Python model
+            
+            // Legacy fields for backward compatibility
             'european_avg_change' => $europeanAvgChange,
             'european_influence_score' => $europeanInfluenceScore,
             'european_impact_percent' => $europeanImpactPercent,

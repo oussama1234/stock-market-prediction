@@ -33,6 +33,11 @@ Route::prefix('stocks')->group(function () {
     // Analytics routes - New comprehensive analytics
     Route::get('/{symbol}/analytics', [AnalyticsController::class, 'index']);
     Route::post('/{symbol}/analytics/regenerate-today', [AnalyticsController::class, 'regenerateToday']);
+    
+    // News routes for stock-specific news with sentiment
+    Route::get('/{symbol}/news', [\App\Http\Controllers\Api\StockNewsController::class, 'getNews']);
+    Route::get('/{symbol}/news/today', [\App\Http\Controllers\Api\StockNewsController::class, 'getTodayNews']);
+    Route::post('/{symbol}/news/fetch', [\App\Http\Controllers\Api\StockNewsController::class, 'fetchNews']);
 });
 
 // Public news routes

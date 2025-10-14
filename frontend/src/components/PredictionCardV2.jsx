@@ -141,7 +141,7 @@ const MainPredictionCard = memo(({ prediction, meta, onRefetch, isFetching }) =>
             currentPrice={currentPrice}
             dbChange={prediction.db_change}
             dbChangePercent={prediction.db_change_percent}
-            dbPreviousClose={prediction.db_previous_close}
+            dbPreviousClose={prediction.previous_close || prediction.db_previous_close}
             dbLastCheckDate={prediction.db_last_check_date}
           />
 
@@ -227,8 +227,9 @@ const MainPredictionDisplay = memo(({ isBullish, label, expectedMove, probabilit
   const validExpectedMove = expectedMove && !isNaN(expectedMove) ? Number(expectedMove) : 0;
   const validPrevClose = dbPreviousClose && !isNaN(dbPreviousClose) ? Number(dbPreviousClose) : validCurrentPrice;
   
-  // Calculate target price from PREVIOUS CLOSE (not current price)
-  // The prediction should be: Previous Close -> Target Price
+  // CRITICAL: Calculate target price from PREVIOUS CLOSE, not current price
+  // The prediction is: Previous Close -> Target Price (expected move from previous close)
+  // This way the prediction is consistent: "From yesterday's close of $X, we expect it to reach $Y (Z% move)"
   const targetPrice = validPrevClose > 0 ? validPrevClose * (1 + validExpectedMove / 100) : 0;
   
   // Calculate the actual expected change: from Previous Close to Target

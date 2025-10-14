@@ -13,7 +13,8 @@ class Stock extends Model
 
     protected $fillable = [
         'symbol', 'name', 'exchange', 'currency', 'country', 'type',
-        'industry', 'sector', 'description', 'logo_url', 'website',
+        'industry', 'sector', 'category', 'volatility_multiplier',
+        'description', 'logo_url', 'website',
         'market_cap', 'shares_outstanding', 'metadata', 'last_fetched_at',
     ];
 
@@ -22,6 +23,7 @@ class Stock extends Model
         'last_fetched_at' => 'datetime',
         'market_cap' => 'integer',
         'shares_outstanding' => 'integer',
+        'volatility_multiplier' => 'decimal:2',
     ];
 
     // Relationships

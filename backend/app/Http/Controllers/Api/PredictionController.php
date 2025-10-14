@@ -35,15 +35,26 @@ class PredictionController extends Controller
                 ], 404);
             }
             
-            $prediction = $this->predictionService->getActivePrediction($stock);
+            // Get horizon from request (default: today)
+            $horizon = request()->get('horizon', 'today');
             
-            if (!$prediction) {
+            // CRITICAL: Use Python quick_model_v4 for predictions via getPredictionForHorizon
+            // This ensures we get sector-aware predictions with volatility multipliers
+            $predictionData = $this->predictionService->getPredictionForHorizon($stock, $horizon);
+            
+            if (!$predictionData) {
                 return response()->json([
                     'success' => false,
-                    'message' => "No active prediction available for {$symbol}",
+                    'message' => "Unable to generate prediction for {$symbol}",
                     'data' => null,
-                ], 200); // Return 200 with null data instead of 404
+                ], 200);
             }
+            
+            // Store the Python model prediction in database for tracking
+            $this->storePredictionFromPythonModel($stock, $predictionData, $horizon);
+            
+            // Get the stored prediction to return (with expected_pct_move accessor)
+            $prediction = $this->predictionService->getActivePrediction($stock);
             
             return response()->json([
                 'success' => true,
@@ -60,6 +71,54 @@ class PredictionController extends Controller
                 'message' => 'Unable to fetch prediction at this time',
                 'data' => null,
             ], 200);
+        }
+    }
+    
+    /**
+     * Store prediction from Python model
+     */
+    protected function storePredictionFromPythonModel($stock, array $pythonData, string $horizon): void
+    {
+        try {
+            // Deactivate old predictions
+            \App\Models\Prediction::where('stock_id', $stock->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+            
+            // CRITICAL: Calculate predicted_price from PREVIOUS CLOSE, not current price
+            // The prediction is: "From previous close, we expect X% move to reach target price"
+            $previousClose = $pythonData['db_previous_close'] ?? $pythonData['api_previous_close'] ?? $pythonData['current_price'] ?? 0;
+            $expectedMove = $pythonData['expected_pct_move'] ?? 0;
+            $predictedPrice = $previousClose * (1 + $expectedMove / 100);
+            
+            // Create new prediction from Python model data
+            \App\Models\Prediction::create([
+                'stock_id' => $stock->id,
+                'direction' => $pythonData['label'] === 'BULLISH' ? 'up' : 'down',
+                'label' => $pythonData['label'] ?? 'NEUTRAL',
+                'confidence_score' => (int) round(($pythonData['probability'] ?? 0.5) * 100),
+                'probability' => $pythonData['probability'] ?? 0.5,
+                'predicted_change_percent' => $expectedMove,
+                'current_price' => $pythonData['current_price'] ?? 0,
+                'predicted_price' => $predictedPrice,
+                'reasoning' => implode('; ', $pythonData['top_reasons'] ?? []),
+                'model_version' => $pythonData['model_version'] ?? 'quick_model_v4',
+                'prediction_date' => now(),
+                'target_date' => now()->endOfDay(),
+                'horizon' => $horizon,
+                'timeframe' => $horizon,
+                'is_active' => true,
+                'indicators_snapshot' => [
+                    'base_score' => $pythonData['base_score'] ?? 0,
+                    'final_score' => $pythonData['final_score'] ?? 0,
+                    'european_influence' => $pythonData['european_influence_score'] ?? 0,
+                    'asian_influence' => $pythonData['asian_influence_score'] ?? 0,
+                    'previous_close' => $previousClose,
+                    'db_previous_close' => $pythonData['db_previous_close'] ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Failed to store Python model prediction: " . $e->getMessage());
         }
     }
     
