@@ -263,8 +263,8 @@ class PredictionService
                 $horizon = 'today';
             }
             
-            // Call Python quick_model_v4.py for prediction (with European + Asian markets)
-            $pythonPath = base_path('python/models/quick_model_v4.py');
+            // Call Python quick_model_v5.py for prediction (enhanced with realistic targets)
+            $pythonPath = base_path('python/models/quick_model_v5.py');
             $asianMarketService = app(AsianMarketService::class);
             $europeanMarketService = app(EuropeanMarketService::class);
             
@@ -321,7 +321,7 @@ class PredictionService
             // Enhance result with market details and price
             $result['asian_markets'] = $asianMarkets;
             $result['european_markets'] = $europeanMarkets;
-            $result['model_version'] = 'quick_model_v4';
+            $result['model_version'] = 'quick_model_v5';
             $result['horizon'] = $horizon;
             $result['generated_at'] = now()->toIso8601String();
             $result['market_influences'] = [
@@ -459,30 +459,73 @@ class PredictionService
         $close = $latestPrice?->close ?? 100.0;
         $volume = $latestPrice?->volume ?? 1000000;
         
+        // Check for surge/bearish keywords in recent news (for V5 model)
+        // Use database-driven keywords via KeywordService
+        $has_surge_keywords = false;
+        $has_bearish_keywords = false;
+        
+        if ($recentNews->count() > 0) {
+            $keywordService = app(KeywordService::class);
+            $bullishKeywords = $keywordService->getBullishKeywords();
+            $bearishKeywords = $keywordService->getBearishKeywords();
+            
+            // Check for bullish/surge keywords
+            foreach ($recentNews as $article) {
+                $text = strtolower($article->title . ' ' . $article->description);
+                foreach (array_keys($bullishKeywords) as $keyword) {
+                    if (str_contains($text, strtolower($keyword))) {
+                        $has_surge_keywords = true;
+                        break 2;
+                    }
+                }
+            }
+            
+            // Check for bearish keywords if no surge detected
+            if (!$has_surge_keywords) {
+                foreach ($recentNews as $article) {
+                    $text = strtolower($article->title . ' ' . $article->description);
+                    foreach (array_keys($bearishKeywords) as $keyword) {
+                        if (str_contains($text, strtolower($keyword))) {
+                            $has_bearish_keywords = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+        
         // CRITICAL: Add stock category and volatility multiplier for sector-based predictions
         // Technology stocks (NVDA, AVGO, TSLA) should have higher volatility (2-5% moves)
         // Finance/Healthcare stocks should have lower volatility (1-2% moves)
         $volatilityMultiplier = (float) ($stock->volatility_multiplier ?? 1.0);
         $category = $stock->category ?? 'Unknown';
         
-        // Initialize base data
+        // Initialize base data (V5 Enhanced with both features)
         $data = [
             'symbol' => $stock->symbol,
             'close' => $close,
+            'current_price' => $close,  // Required by V5
             'high' => $quote['high'] ?? $latestPrice?->high ?? $close,
             'low' => $quote['low'] ?? $latestPrice?->low ?? $close,
             'volume' => $volume,
             'news_sentiment_score' => $sentiment,
+            'news_count' => $recentNews->count(),
+            'has_surge_keywords' => $has_surge_keywords,
+            'has_bearish_keywords' => $has_bearish_keywords,
             'category' => $category,
             'volatility_multiplier' => $volatilityMultiplier,
             'price_change_1d' => 0.0,
             'price_change_3d' => 0.0,
+            'price_change_5d' => 0.0,
             'price_change_7d' => 0.0,
             'ema_12' => $close,
             'ema_26' => $close,
+            'sma_20' => $close,
+            'sma_50' => $close,
             'macd' => 0.0,
             'macd_signal' => 0.0,
-            'macd_hist' => 0.0,
+            'macd_histogram' => 0.0,
+            'rsi' => 50.0,
             'rsi_14' => 50.0,
             'rsi_7' => 50.0,
             'atr_14' => 0.0,
@@ -492,10 +535,15 @@ class PredictionService
             'bb_lower' => $close,
             'bb_width' => 0.0,
             'bb_pct' => 0.5,
+            'bollinger_position' => 0.5,  // V5: 0-1 scale
             'distance_to_support' => 0.0,
             'distance_to_resistance' => 0.0,
+            'near_support' => false,
+            'near_resistance' => false,
+            'volume_ratio' => 1.0,
             'volume_sma_ratio' => 1.0,
             'volume_spike' => false,
+            'volatility' => 1.0,  // V5: calculated volatility
             'fear_greed_index' => 50.0,
         ];
         
@@ -511,15 +559,25 @@ class PredictionService
                 // Use LIVE quote data for today's change (most important!)
                 $data['price_change_1d'] = $todayChangePercent;
                 $data['price_change_3d'] = $this->calculatePriceChangeFromArray($closes, 3);
+                $data['price_change_5d'] = $this->calculatePriceChangeFromArray($closes, 5);
                 $data['price_change_7d'] = $this->calculatePriceChangeFromArray($closes, 7);
             } else {
                 // Fallback: still use live data for 1d even if not enough historical data
                 $data['price_change_1d'] = $todayChangePercent;
             }
             
+            // Calculate SMAs (for V5)
+            if (count($closes) >= 20) {
+                $data['sma_20'] = array_sum(array_slice($closes, -20)) / 20;
+            }
+            if (count($closes) >= 50) {
+                $data['sma_50'] = array_sum(array_slice($closes, -50)) / 50;
+            }
+            
             // RSI
             $rsi14 = $this->calculateRSIValue($closes, 14);
             $rsi7 = $this->calculateRSIValue($closes, 7);
+            $data['rsi'] = $rsi14;  // V5 primary RSI
             $data['rsi_14'] = $rsi14;
             $data['rsi_7'] = $rsi7;
             
