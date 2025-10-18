@@ -59,6 +59,7 @@ export default function EuropeanMarketWidgetEnhanced({ compact = false }) {
 const FullView = memo(({ markets, meta, onRefetch, isFetching }) => {
   const avgChange = meta.european_avg_change || 0;
   const isPositive = avgChange > 0;
+  const weightPercent = (meta && typeof meta.impact_weight === 'number') ? meta.impact_weight : 50;
 
   return (
     <div className="relative group">
@@ -86,6 +87,7 @@ const FullView = memo(({ markets, meta, onRefetch, isFetching }) => {
             onRefetch={onRefetch}
             isFetching={isFetching}
             avgChange={avgChange}
+            weightPercent={weightPercent}
           />
 
           {/* Market Cards Grid */}
@@ -100,6 +102,7 @@ const FullView = memo(({ markets, meta, onRefetch, isFetching }) => {
             <InfluenceMeterEnhanced
               score={meta.european_influence_score}
               impactPercent={meta.european_impact_percent}
+              weightPercent={weightPercent}
               avgChange={meta.european_avg_change}
             />
           )}
@@ -122,7 +125,7 @@ FullView.displayName = 'FullView';
 /**
  * Header Section - Memoized
  */
-const HeaderSection = memo(({ onRefetch, isFetching, avgChange }) => {
+const HeaderSection = memo(({ onRefetch, isFetching, avgChange, weightPercent }) => {
   const isPositive = avgChange > 0;
 
   return (
@@ -144,7 +147,7 @@ const HeaderSection = memo(({ onRefetch, isFetching, avgChange }) => {
               {isPositive ? '↗' : '↘'} {isPositive ? '+' : ''}{avgChange.toFixed(2)}%
             </span>
             <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold shadow-sm">
-              30% Weight
+              {weightPercent}% Weight
             </span>
           </div>
         </div>
@@ -250,7 +253,7 @@ MarketCardEnhanced.displayName = 'MarketCardEnhanced';
 /**
  * Enhanced Influence Meter - Memoized
  */
-const InfluenceMeterEnhanced = memo(({ score, impactPercent, avgChange }) => {
+const InfluenceMeterEnhanced = memo(({ score, impactPercent, weightPercent, avgChange }) => {
   const isBullish = score > 0;
   const isNeutral = Math.abs(score) < 0.1;
   
@@ -273,7 +276,7 @@ const InfluenceMeterEnhanced = memo(({ score, impactPercent, avgChange }) => {
           <Zap className="w-5 h-5 text-blue-600" />
           <span className="text-sm font-black text-gray-900">Market Influence</span>
           <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold">
-            30% Weight
+            {weightPercent}% Weight
           </span>
         </div>
         {!isNeutral && (
@@ -352,6 +355,7 @@ InfluenceMeterEnhanced.displayName = 'InfluenceMeterEnhanced';
  */
 const CompactView = memo(({ markets, meta, onRefetch, isFetching }) => {
   const avgChange = meta.european_avg_change || 0;
+  const weightPercent = (meta && typeof meta.impact_weight === 'number') ? meta.impact_weight : 50;
   const isPositive = avgChange > 0;
 
   return (
@@ -361,7 +365,7 @@ const CompactView = memo(({ markets, meta, onRefetch, isFetching }) => {
           <Globe2 className="w-4 h-4 text-blue-600" />
           <span className="text-sm font-bold text-gray-900">European Markets</span>
           <span className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded-full font-bold">
-            30%
+            {weightPercent}%
           </span>
         </div>
         <div className="flex items-center gap-2">

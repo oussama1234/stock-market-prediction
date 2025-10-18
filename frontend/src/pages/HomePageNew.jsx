@@ -33,6 +33,7 @@ function HomePageNew() {
     sp500: null,
     nasdaq: null,
     dow: null,
+    russell2000: null,
   });
   const [indicesLoading, setIndicesLoading] = useState(true);
   
@@ -126,6 +127,7 @@ function HomePageNew() {
           sp500: formatIndex(response.data.sp500),
           nasdaq: formatIndex(response.data.nasdaq),
           dow: formatIndex(response.data.dow),
+          russell2000: formatIndex(response.data.russell2000),
         });
       } else {
         console.warn('Failed to fetch market indices:', response);
@@ -611,7 +613,7 @@ function HomePageNew() {
           </div>
 
           {/* Major Indices Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {/* S&P 500 Card */}
             <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
@@ -723,6 +725,47 @@ function HomePageNew() {
                       <Activity className="w-4 h-4" />
                       <span className="text-sm font-medium">
                         {marketIndices.dow.change_percent >= 0 ? 'Bullish' : 'Bearish'} Trend
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="animate-pulse">
+                    <div className="h-8 bg-white/20 rounded mb-2"></div>
+                    <div className="h-4 bg-white/20 rounded w-24"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Russell 2000 Card */}
+            <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-105">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-6 h-6 text-white" />
+                    <h3 className="text-xl font-bold text-white">Russell 2000</h3>
+                  </div>
+                  {marketIndices.russell2000 && (
+                    <div className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow-lg ${
+                      marketIndices.russell2000.change_percent >= 0 
+                        ? 'bg-green-500/70' 
+                        : 'bg-red-500/70'
+                    }`}>
+                      {marketIndices.russell2000.change_percent >= 0 ? <TrendingUp className="inline w-3 h-3" /> : <TrendingDown className="inline w-3 h-3" />}
+                      {' '}{marketIndices.russell2000.change_percent >= 0 ? '+' : ''}{marketIndices.russell2000.change_percent?.toFixed(2)}%
+                    </div>
+                  )}
+                </div>
+                {!indicesLoading && marketIndices.russell2000 ? (
+                  <>
+                    <div className="text-3xl font-black text-white mb-2">
+                      ${marketIndices.russell2000.current_price?.toFixed(2)}
+                    </div>
+                    <div className="flex items-center gap-2 text-orange-100">
+                      <Activity className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        {marketIndices.russell2000.change_percent >= 0 ? 'Bullish' : 'Bearish'} Trend
                       </span>
                     </div>
                   </>

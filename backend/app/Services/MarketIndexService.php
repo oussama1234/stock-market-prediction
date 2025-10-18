@@ -30,6 +30,11 @@ class MarketIndexService
             'name' => 'Dow Jones Industrial Average',
             'index_name' => 'dow',
         ],
+        [
+            'symbol' => 'IWM',
+            'name' => 'Russell 2000',
+            'index_name' => 'russell2000',
+        ],
     ];
 
     public function __construct(StockService $stockService)

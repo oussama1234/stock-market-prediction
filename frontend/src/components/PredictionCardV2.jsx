@@ -41,23 +41,54 @@ export default function PredictionCardV2Enhanced({ symbol, horizon = 'today' }) 
     return <ErrorState error={error} onRetry={handleRefetch} isFetching={isFetching} />;
   }
 
-  const prediction = data?.data || {};
+  const apiData = data?.data || {};
   const meta = data?.meta || {};
+
+  // Handle nested prediction structure from backend
+  // Backend returns: { success, data: { prediction: {...}, market_influences: {...}, ... } }
+  const prediction = {
+    // Merge prediction object with top-level fields
+    ...(apiData.prediction || {}),
+    // Top-level fields that might not be in prediction object
+    label: apiData.prediction?.direction === 'up' ? 'BULLISH' : apiData.prediction?.direction === 'down' ? 'BEARISH' : 'NEUTRAL',
+    probability: apiData.prediction?.confidence || 0.5,
+    expected_pct_move: apiData.prediction?.target_change_percent || 0,
+    current_price: apiData.current_price || apiData.prediction?.current_price,
+    model_version: apiData.model_version || 'quick_model_v5',
+    // Market influence data
+    // weight = configured weight (50, 30, 20)
+    // impact_percent = actual measured impact (0.12 = 12%)
+    european_influence_score: apiData.market_influences?.european?.impact_percent || 0,
+    european_impact_percent: (apiData.market_influences?.european?.weight || 30) / 100, // Convert 30 to 0.3
+    european_contribution: apiData.market_influences?.european?.impact_percent || 0,
+    asian_influence_score: apiData.market_influences?.asian?.impact_percent || 0,
+    asian_impact_percent: (apiData.market_influences?.asian?.weight || 20) / 100, // Convert 20 to 0.2
+    asian_contribution: apiData.market_influences?.asian?.impact_percent || 0,
+    local_score: apiData.market_influences?.local?.impact_percent || 0,
+    local_impact_percent: (apiData.market_influences?.local?.weight || 50) / 100, // Convert 50 to 0.5
+    local_contribution: apiData.market_influences?.local?.impact_percent || 0,
+    // Market data
+    european_markets: apiData.european_markets,
+    asian_markets: apiData.asian_markets,
+    // Other fields
+    top_reasons: apiData.signals || [],
+    base_score: apiData.scores?.composite,
+    final_score: apiData.scores?.composite,
+    db_previous_close: apiData.db_previous_close || apiData.api_previous_close,
+    db_change: apiData.db_change || apiData.api_change,
+    db_change_percent: apiData.db_change_percent || apiData.api_change_percent,
+    db_last_check_date: apiData.db_last_check_date,
+  };
 
   // Debug logging
   console.log('🔍 Prediction Data:', {
-    current_price: prediction.current_price,
-    expected_pct_move: prediction.expected_pct_move,
+    raw_apiData: apiData,
+    processed_prediction: prediction,
     label: prediction.label,
     probability: prediction.probability,
-    top_reasons: prediction.top_reasons,
-    fullData: prediction
+    expected_pct_move: prediction.expected_pct_move,
+    current_price: prediction.current_price,
   });
-  
-  // Debug Key Factors specifically
-  if (prediction.top_reasons) {
-    console.log('📊 Key Factors from Backend:', prediction.top_reasons);
-  }
 
   return (
     <div className="space-y-6">
