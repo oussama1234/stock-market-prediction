@@ -80,39 +80,39 @@ function Navigation() {
   return (
     <>
       <nav 
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 overflow-x-hidden max-w-full ${
           isDarkMode
             ? isScrolled
-              ? 'bg-gray-900/95 backdrop-blur-xl shadow-2xl py-3'
-              : 'bg-gray-900/90 backdrop-blur-lg py-5'
+              ? 'bg-gray-900/95 backdrop-blur-xl shadow-2xl py-2 md:py-3'
+              : 'bg-gray-900/90 backdrop-blur-lg py-3 md:py-5'
             : isScrolled
-              ? 'bg-white/95 backdrop-blur-xl shadow-lg py-3'
-              : 'bg-white/90 backdrop-blur-lg py-5'
+              ? 'bg-white/95 backdrop-blur-xl shadow-lg py-2 md:py-3'
+              : 'bg-white/90 backdrop-blur-lg py-3 md:py-5'
         }`}
       >
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-3 sm:px-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link 
               to="/" 
-              className="group flex items-center gap-3 transition-all duration-500 hover:scale-105"
+              className="group flex items-center gap-2 sm:gap-3 transition-all duration-500 hover:scale-105 flex-shrink-0"
             >
               <div className="relative">
                 {/* Animated gradient glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl blur-md opacity-50 group-hover:opacity-100 group-hover:blur-lg transition-all duration-500 animate-pulse"></div>
-                <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-2.5 rounded-xl shadow-2xl group-hover:shadow-purple-500/50 transition-all duration-500 group-hover:rotate-3">
-                  <svg className="w-6 h-6 text-white transform group-hover:scale-110 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-lg md:rounded-xl blur-sm md:blur-md opacity-50 group-hover:opacity-100 group-hover:blur-md md:group-hover:blur-lg transition-all duration-500 animate-pulse"></div>
+                <div className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 p-1.5 sm:p-2 md:p-2.5 rounded-lg md:rounded-xl shadow-xl md:shadow-2xl group-hover:shadow-purple-500/50 transition-all duration-500 group-hover:rotate-3">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white transform group-hover:scale-110 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
               </div>
-              <div>
-                <h1 className={`text-xl font-black transition-all duration-300 group-hover:tracking-wide ${
+              <div className="hidden xs:block sm:block">
+                <h1 className={`text-sm sm:text-base md:text-xl font-black transition-all duration-300 group-hover:tracking-wide whitespace-nowrap ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
                   Market<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-gradient">AI</span>
                 </h1>
-                <p className={`text-xs font-semibold transition-colors duration-300 ${
+                <p className={`text-[10px] sm:text-xs font-semibold transition-colors duration-300 whitespace-nowrap ${
                   isDarkMode ? 'text-gray-400 group-hover:text-purple-400' : 'text-gray-600 group-hover:text-indigo-600'
                 }`}>
                   Stock Prediction
@@ -214,13 +214,14 @@ function Navigation() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`md:hidden p-2 rounded-lg transition-colors duration-300 ${
+              className={`md:hidden p-2 rounded-lg transition-colors duration-300 flex-shrink-0 ${
                 isDarkMode
                   ? 'text-gray-300 hover:bg-gray-800'
                   : 'text-gray-900 hover:bg-gray-100'
               }`}
+              aria-label="Toggle menu"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isMobileMenuOpen ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (
@@ -237,14 +238,14 @@ function Navigation() {
             isMobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <div className={`container mx-auto px-4 py-4 rounded-b-2xl shadow-xl mt-2 backdrop-blur-xl ${
+          <div className={`container mx-auto px-3 sm:px-4 py-3 sm:py-4 rounded-b-xl sm:rounded-b-2xl shadow-xl mt-2 backdrop-blur-xl ${
             isDarkMode ? 'bg-gray-900/95' : 'bg-white/95'
           }`}>
             {navLinks.map((link, index) => (
               <Link
                 key={link.path}
                 to={link.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-300 ${
+                className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all duration-300 ${
                   isActive(link.path)
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
                     : isDarkMode
@@ -264,7 +265,7 @@ function Navigation() {
             {/* Dark Mode Toggle in Mobile */}
             <button
               onClick={toggleDarkMode}
-              className={`w-full mt-3 flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+              className={`w-full mt-2 sm:mt-3 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 ${
                 isDarkMode
                   ? 'bg-gray-800 text-yellow-400 hover:bg-gray-700'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -287,7 +288,7 @@ function Navigation() {
               )}
             </button>
             
-            <button className="w-full mt-2 px-6 py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+            <button className="w-full mt-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
               Get Started
             </button>
           </div>
@@ -295,13 +296,13 @@ function Navigation() {
       </nav>
       
       {/* Visible Gradient Border Shadow at Bottom of Navbar */}
-      <div className={`fixed left-0 right-0 z-40 pointer-events-none transition-all duration-500 ${
-        isScrolled ? 'top-[60px] opacity-0' : 'top-[84px] opacity-100'
+      <div className={`fixed left-0 right-0 z-40 pointer-events-none transition-all duration-500 overflow-x-hidden ${
+        isScrolled ? 'top-[48px] sm:top-[56px] md:top-[60px] opacity-0' : 'top-[60px] sm:top-[72px] md:top-[84px] opacity-100'
       }`}>
         {/* Main gradient line */}
-        <div className="h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/50"></div>
+        <div className="h-0.5 sm:h-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 shadow-md sm:shadow-lg shadow-purple-500/50"></div>
         {/* Glow effect below the line */}
-        <div className="h-6 bg-gradient-to-b from-purple-500/30 via-pink-500/20 to-transparent"></div>
+        <div className="h-4 sm:h-6 bg-gradient-to-b from-purple-500/30 via-pink-500/20 to-transparent"></div>
       </div>
 
       <style>{`

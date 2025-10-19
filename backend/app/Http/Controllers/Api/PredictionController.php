@@ -35,6 +35,9 @@ class PredictionController extends Controller
                 ], 404);
             }
             
+            // Load category relationship
+            $stock->load('category');
+            
             $prediction = $this->predictionService->getActivePrediction($stock);
             
             if (!$prediction) {
@@ -45,13 +48,30 @@ class PredictionController extends Controller
                 ], 200); // Return 200 with null data instead of 404
             }
             
+            // Build stock info with category
+            $stockInfo = [
+                'symbol' => $stock->symbol,
+                'name' => $stock->name,
+            ];
+            
+            // Add category information if available
+            if ($stock->category) {
+                $stockInfo['category'] = [
+                    'name' => $stock->category->name,
+                    'description' => $stock->category->description,
+                    'volatility_multiplier' => (float) $stock->category->volatility_multiplier,
+                    'typical_daily_range' => [
+                        'min' => (float) $stock->category->typical_daily_range_min,
+                        'max' => (float) $stock->category->typical_daily_range_max,
+                    ],
+                    'high_momentum' => (bool) $stock->category->high_momentum,
+                ];
+            }
+            
             return response()->json([
                 'success' => true,
                 'data' => $prediction,
-                'stock' => [
-                    'symbol' => $stock->symbol,
-                    'name' => $stock->name,
-                ],
+                'stock' => $stockInfo,
             ]);
         } catch (\Exception $e) {
             \Log::error("Error fetching prediction for {$symbol}: " . $e->getMessage());

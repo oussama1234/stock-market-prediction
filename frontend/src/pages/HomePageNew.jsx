@@ -389,7 +389,7 @@ function HomePageNew() {
           <div className="absolute bottom-20 right-20 w-80 h-80 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-full mix-blend-multiply filter blur-2xl animate-blob animation-delay-3000"></div>
         </div>
 
-        <div ref={heroRef} className="relative container mx-auto px-4 py-24 md:py-32">
+        <div ref={heroRef} className="relative container mx-auto px-3 sm:px-4 py-16 sm:py-20 md:py-28 lg:py-32">
           <div className="text-center text-white">
             {/* Animated Badge with Gradient Border */}
             <div className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 mb-8 animate-fade-in-up hover:scale-105 transition-all duration-500 hover:shadow-2xl hover:shadow-emerald-500/50">
@@ -401,7 +401,7 @@ function HomePageNew() {
             </div>
 
             {/* Main Heading with Enhanced Gradient Text and Animations */}
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-6 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-4 sm:mb-6 leading-tight px-2">
               <span className="inline-block animate-fade-in-up hover:scale-105 transition-transform duration-500" style={{animationDelay: '0.1s'}}>
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-cyan-100 to-blue-100 drop-shadow-2xl animate-text-shimmer">
                   Smart Trading
@@ -416,25 +416,25 @@ function HomePageNew() {
             </h1>
             
             {/* Subtitle */}
-            <p className="text-xl md:text-2xl font-light mb-4 text-white/80 max-w-3xl mx-auto animate-fade-in-up" style={{animationDelay: '0.3s'}}>
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-light mb-4 text-white/90 max-w-3xl mx-auto px-4 animate-fade-in-up leading-relaxed" style={{animationDelay: '0.3s'}}>
               Advanced stock market predictions using machine learning, sentiment analysis, and real-time data
             </p>
             
             {/* Feature Pills with Colorful Hover Effects */}
-            <div className="flex flex-wrap justify-center gap-3 mb-12 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
-              <span className="group px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-sm font-bold text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 hover:border-cyan-300/50 hover:scale-110 hover:shadow-2xl hover:shadow-cyan-500/50 transition-all duration-500 cursor-pointer">
-                <Zap className="w-4 h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> Real-time Analysis
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 sm:mb-12 px-4 animate-fade-in-up" style={{animationDelay: '0.4s'}}>
+              <span className="group px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-xs sm:text-sm font-bold text-white hover:bg-gradient-to-r hover:from-cyan-500/20 hover:to-blue-500/20 hover:border-cyan-300/50 hover:scale-105 sm:hover:scale-110 hover:shadow-2xl hover:shadow-cyan-500/50 transition-all duration-500 cursor-pointer whitespace-nowrap">
+                <Zap className="w-3 h-3 sm:w-4 sm:h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> Real-time Analysis
               </span>
-              <span className="group px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-sm font-bold text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-300/50 hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-500 cursor-pointer">
-                <Brain className="w-4 h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> AI Predictions
+              <span className="group px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-xs sm:text-sm font-bold text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20 hover:border-purple-300/50 hover:scale-105 sm:hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-500 cursor-pointer whitespace-nowrap">
+                <Brain className="w-3 h-3 sm:w-4 sm:h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> AI Predictions
               </span>
-              <span className="group px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-sm font-bold text-white hover:bg-gradient-to-r hover:from-green-500/20 hover:to-emerald-500/20 hover:border-green-300/50 hover:scale-110 hover:shadow-2xl hover:shadow-green-500/50 transition-all duration-500 cursor-pointer">
-                <TrendingUp className="w-4 h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> Market Insights
+              <span className="group px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/10 backdrop-blur-xl border-2 border-white/30 text-xs sm:text-sm font-bold text-white hover:bg-gradient-to-r hover:from-green-500/20 hover:to-emerald-500/20 hover:border-green-300/50 hover:scale-105 sm:hover:scale-110 hover:shadow-2xl hover:shadow-green-500/50 transition-all duration-500 cursor-pointer whitespace-nowrap">
+                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 inline-block group-hover:scale-125 transition-transform duration-300" /> Market Insights
               </span>
             </div>
 
             {/* Enhanced Search Bar with Colorful Effects */}
-            <div ref={searchContainerRef} className="max-w-3xl mx-auto animate-fade-in-up" style={{animationDelay: '0.5s'}}>
+            <div ref={searchContainerRef} className="max-w-3xl mx-auto px-2 sm:px-0 animate-fade-in-up" style={{animationDelay: '0.5s'}}>
               <form onSubmit={handleSearch} className="group relative">
                 {/* Multi-colored glowing background effect */}
                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 rounded-2xl blur-xl opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-1000"></div>
@@ -454,15 +454,15 @@ function HomePageNew() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search stocks (AAPL, TSLA, MSFT, GOOGL...)"
-                      className="flex-1 px-6 py-5 text-lg font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 bg-transparent focus:outline-none transition-all duration-300"
+                      placeholder="Search stocks (AAPL, TSLA, MSFT...)"
+                      className="flex-1 px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 bg-transparent focus:outline-none transition-all duration-300"
                     />
                     
                     {/* Search Button with Enhanced Gradients */}
                     <button
                       type="submit"
                       disabled={searchLoading}
-                      className="group relative px-8 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold hover:from-cyan-600 hover:via-indigo-600 hover:to-purple-600 hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-700 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+                      className="group relative px-4 sm:px-6 md:px-8 py-3 sm:py-4 md:py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-sm sm:text-base font-bold hover:from-cyan-600 hover:via-indigo-600 hover:to-purple-600 hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-700 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden flex-shrink-0"
                     >
                       {/* Animated shimmer effect */}
                       <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
@@ -477,10 +477,10 @@ function HomePageNew() {
                           <span>Searching</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span>Search</span>
-                          <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <span className="hidden xs:inline">Search</span>
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
                         </div>
                       )}
@@ -780,7 +780,7 @@ function HomePageNew() {
           </div>
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {/* Stocks Tracked */}
             <div className="group relative overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -913,51 +913,53 @@ function HomePageNew() {
         
         {/* Stocks Section with Tabs */}
         <div className="mb-12">
-          <Suspense fallback={<div className="mb-6"><h2 className="text-3xl font-bold">Stock Analysis</h2></div>}>
+          <Suspense fallback={<div className="mb-6"><h2 className="text-3xl font-bold text-center">Stock Analysis</h2></div>}>
             <SectionHeader
               icon={<TrendingUp className="w-6 h-6" />}
               title="Stock Analysis"
               subtitle={activeTab === 'popular' ? 'Top stocks by market cap' : 'Biggest price movers today'}
               badge={`${displayStocks.length} stocks`}
+              centered={false}
+              centerOnMobile={true}
             >
-              <div className="flex items-center gap-3">
-                <div className="flex gap-2 bg-white rounded-xl p-1 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+                  <div className="flex gap-2 bg-white rounded-xl p-1 shadow-lg">
+                    <button
+                      onClick={() => handleTabChange('popular')}
+                      className={`px-6 py-2 rounded-lg font-bold transition-all duration-300 ${
+                        activeTab === 'popular'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Award className="w-4 h-4" /> Popular
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleTabChange('trending')}
+                      className={`px-6 py-2 rounded-lg font-bold transition-all duration-300 ${
+                        activeTab === 'trending'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Flame className="w-4 h-4" /> Trending
+                      </span>
+                    </button>
+                  </div>
                   <button
-                    onClick={() => handleTabChange('popular')}
-                    className={`px-6 py-2 rounded-lg font-bold transition-all duration-300 ${
-                      activeTab === 'popular'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    onClick={() => activeTab === 'popular' ? getPopularStocks() : fetchTrendingStocks()}
+                    disabled={isLoadingStocks}
+                    className="px-4 py-2 bg-white rounded-lg font-bold text-indigo-600 hover:bg-indigo-50 transition-all hover:scale-105 disabled:opacity-50 shadow-lg"
+                    title="Refresh stocks"
                   >
-                    <span className="flex items-center gap-2">
-                      <Award className="w-4 h-4" /> Popular
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => handleTabChange('trending')}
-                    className={`px-6 py-2 rounded-lg font-bold transition-all duration-300 ${
-                      activeTab === 'trending'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg scale-105'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Flame className="w-4 h-4" /> Trending
-                    </span>
+                    <svg className={`w-5 h-5 ${isLoadingStocks ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
                   </button>
                 </div>
-                <button
-                  onClick={() => activeTab === 'popular' ? getPopularStocks() : fetchTrendingStocks()}
-                  disabled={isLoadingStocks}
-                  className="px-4 py-2 bg-white rounded-lg font-bold text-indigo-600 hover:bg-indigo-50 transition-all hover:scale-105 disabled:opacity-50 shadow-lg"
-                  title="Refresh stocks"
-                >
-                  <svg className={`w-5 h-5 ${isLoadingStocks ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </button>
-              </div>
             </SectionHeader>
           </Suspense>
 
@@ -982,7 +984,7 @@ function HomePageNew() {
             </div>
           ) : (
             <Suspense fallback={<GenericLoader message="Loading stocks" size="small" fullScreen={false} />}>
-              <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500">
                 {displayStocks.map((stock, index) => (
                   <div
                     key={stock.id}
@@ -1024,7 +1026,7 @@ function HomePageNew() {
           ) : (
             <>
               <Suspense fallback={<GenericLoader message="Loading news" size="small" fullScreen={false} />}>
-                <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {latestMarketNews.map((article, idx) => (
                     <NewsCard key={article.url || idx} article={article} />
                   ))}

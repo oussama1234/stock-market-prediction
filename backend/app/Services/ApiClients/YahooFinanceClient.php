@@ -29,8 +29,15 @@ class YahooFinanceClient
         }
         
         try {
-            // Use quote endpoint for most up-to-date data including pre/post market
-            $response = Http::timeout(10)
+            // Use quote endpoint for most up-to-date data including pre/post market with proper headers
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept' => 'application/json',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'Referer' => 'https://finance.yahoo.com/',
+                ])
+                ->retry(2, 1000) // Retry twice with 1 second delay
                 ->get("https://query1.finance.yahoo.com/v7/finance/quote", [
                     'symbols' => strtoupper($symbol),
                 ]);
@@ -131,6 +138,100 @@ class YahooFinanceClient
             
         } catch (\Exception $e) {
             Log::error("Yahoo Finance API error for {$symbol}: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Get fundamental data for a symbol
+     * Fetches P/E, EPS, revenue growth, margins, etc.
+     */
+    public function getFundamentals(string $symbol): ?array
+    {
+        $cacheKey = "yahoo_fundamentals_{$symbol}";
+        
+        // Cache for 1 hour (fundamentals don't change frequently)
+        if ($cached = Cache::get($cacheKey)) {
+            return $cached;
+        }
+        
+        try {
+            // Use quoteSummary endpoint for detailed fundamental data with proper headers
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept' => 'application/json',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'Accept-Encoding' => 'gzip, deflate, br',
+                    'Referer' => 'https://finance.yahoo.com/',
+                    'Origin' => 'https://finance.yahoo.com',
+                ])
+                ->retry(2, 1000) // Retry twice with 1 second delay
+                ->get("https://query2.finance.yahoo.com/v10/finance/quoteSummary/{$symbol}", [
+                    'modules' => 'defaultKeyStatistics,financialData,summaryDetail',
+                ]);
+            
+            if (!$response->successful()) {
+                Log::warning("Yahoo Finance fundamentals API failed for {$symbol}");
+                return null;
+            }
+            
+            $data = $response->json();
+            
+            if (!isset($data['quoteSummary']['result'][0])) {
+                Log::warning("No fundamental data in Yahoo Finance response for {$symbol}");
+                return null;
+            }
+            
+            $result = $data['quoteSummary']['result'][0];
+            $stats = $result['defaultKeyStatistics'] ?? [];
+            $financial = $result['financialData'] ?? [];
+            $summary = $result['summaryDetail'] ?? [];
+            
+            $fundamentals = [
+                'pe_ratio' => $stats['trailingPE']['raw'] ?? $stats['forwardPE']['raw'] ?? null,
+                'pb_ratio' => $stats['priceToBook']['raw'] ?? null,
+                'ps_ratio' => $summary['priceToSalesTrailing12Months']['raw'] ?? null,
+                'eps_growth' => $stats['earningsQuarterlyGrowth']['raw'] ?? null,
+                'revenue_growth' => $financial['revenueGrowth']['raw'] ?? null,
+                'roe' => $financial['returnOnEquity']['raw'] ?? null,
+                'profit_margin' => $financial['profitMargins']['raw'] ?? null,
+                'debt_to_equity' => $financial['debtToEquity']['raw'] ?? null,
+                'dividend_yield' => $summary['dividendYield']['raw'] ?? null,
+                'market_cap' => $summary['marketCap']['raw'] ?? null,
+                'beta' => $stats['beta']['raw'] ?? null,
+            ];
+            
+            // Convert percentages to proper format (0.15 = 15%)
+            if ($fundamentals['eps_growth'] !== null) {
+                $fundamentals['eps_growth'] = $fundamentals['eps_growth'] * 100;
+            }
+            if ($fundamentals['revenue_growth'] !== null) {
+                $fundamentals['revenue_growth'] = $fundamentals['revenue_growth'] * 100;
+            }
+            if ($fundamentals['roe'] !== null) {
+                $fundamentals['roe'] = $fundamentals['roe'] * 100;
+            }
+            if ($fundamentals['profit_margin'] !== null) {
+                $fundamentals['profit_margin'] = $fundamentals['profit_margin'] * 100;
+            }
+            if ($fundamentals['dividend_yield'] !== null) {
+                $fundamentals['dividend_yield'] = $fundamentals['dividend_yield'] * 100;
+            }
+            
+            // Cache for 1 hour
+            Cache::put($cacheKey, $fundamentals, 3600);
+            
+            Log::info("Yahoo Finance fundamentals fetched for {$symbol}", [
+                'pe' => $fundamentals['pe_ratio'],
+                'eps_growth' => $fundamentals['eps_growth'],
+                'roe' => $fundamentals['roe'],
+            ]);
+            
+            return $fundamentals;
+            
+        } catch (\Exception $e) {
+            Log::error("Yahoo Finance fundamentals error for {$symbol}: " . $e->getMessage());
             return null;
         }
     }

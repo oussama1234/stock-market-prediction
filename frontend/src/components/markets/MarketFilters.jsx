@@ -35,13 +35,13 @@ const MarketFilters = memo(function MarketFilters({
       {/* Colorful gradient border effect */}
       <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 group-hover:opacity-40 blur-sm transition-opacity duration-500"></div>
       
-      <div className="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-2xl shadow-xl p-6 md:p-8">
+      <div className="relative bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
         {/* Header with icon */}
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
-            <Filter className="w-5 h-5 text-white" />
+            <Filter className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
-          <h2 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+          <h2 className="text-lg sm:text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
             Filter News
           </h2>
         </div>
@@ -65,8 +65,8 @@ const MarketFilters = memo(function MarketFilters({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="e.g. tariff, ban, raised, guidance, earnings"
-                  className="relative w-full pl-12 pr-4 py-4 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none transition-all duration-300 font-medium placeholder:text-gray-400"
+                  placeholder="e.g. tariff, ban, earnings"
+                  className="relative w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 text-sm sm:text-base rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-purple-500 dark:focus:border-purple-500 focus:outline-none transition-all duration-300 font-medium placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -98,7 +98,7 @@ const MarketFilters = memo(function MarketFilters({
                     key={p.key}
                     type="button"
                     onClick={() => onPresetClick(p.key)}
-                    className={`group/btn relative px-5 py-3 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden ${
+                    className={`group/btn relative px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 overflow-hidden ${
                       isActive
                         ? 'text-white shadow-lg transform scale-105'
                         : 'text-gray-700 dark:text-gray-300 hover:scale-105'
@@ -136,7 +136,7 @@ const MarketFilters = memo(function MarketFilters({
                     type="date"
                     value={from || ''}
                     onChange={(e) => setFrom(e.target.value)}
-                    className="relative w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none transition-all font-medium"
+                    className="relative w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none transition-all font-medium"
                   />
                 </div>
               </div>
@@ -151,7 +151,7 @@ const MarketFilters = memo(function MarketFilters({
                     type="date"
                     value={to || ''}
                     onChange={(e) => setTo(e.target.value)}
-                    className="relative w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-pink-500 dark:focus:border-pink-500 focus:outline-none transition-all font-medium"
+                    className="relative w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-2 border-gray-200 dark:border-gray-700 focus:border-pink-500 dark:focus:border-pink-500 focus:outline-none transition-all font-medium"
                   />
                 </div>
               </div>
@@ -164,7 +164,7 @@ const MarketFilters = memo(function MarketFilters({
               type="button"
               disabled={applyDisabled}
               onClick={onApply}
-              className="group/apply relative inline-flex items-center gap-3 px-8 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95"
+              className="group/apply relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 via-indigo-600 to-purple-600 opacity-0 group-hover/apply:opacity-100 transition-opacity duration-500"></div>

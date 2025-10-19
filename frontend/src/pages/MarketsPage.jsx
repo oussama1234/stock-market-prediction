@@ -71,7 +71,7 @@ function MarketsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-850 dark:to-gray-900 transition-colors duration-300">
       {/* Modern Header - No Hero, Just Clean Title */}
       <div className="relative bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 via-green-500/10 to-teal-500/10 border border-emerald-500/20 mb-3">
@@ -81,31 +81,31 @@ function MarketsPage() {
                 </span>
                 <span className="text-xs font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600">LIVE UPDATES</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
                 Market News
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 text-base md:text-lg max-w-2xl">
-                Real-time news aggregated from multiple sources • AI-powered importance ranking • Advanced filtering
+              <p className="text-gray-600 dark:text-gray-400 text-sm sm:text-base md:text-lg max-w-2xl leading-relaxed">
+                Real-time news • AI-powered ranking • Advanced filtering
               </p>
             </div>
             
             {/* Stats Pills */}
             <div className="flex flex-wrap gap-3">
-              <div className="group relative overflow-hidden px-4 py-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div className="group relative overflow-hidden px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative flex items-center gap-2">
-                  <Newspaper className="w-5 h-5 text-white" />
+                  <Newspaper className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   <div>
                     <div className="text-xs font-medium text-blue-100">Articles</div>
-                    <div className="text-xl font-black text-white">{totalCount || items.length}</div>
+                    <div className="text-lg sm:text-xl font-black text-white">{totalCount || items.length}</div>
                   </div>
                 </div>
               </div>
               
-              <div className="group relative overflow-hidden px-4 py-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <div className="group relative overflow-hidden px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-white/20 rounded-full -mr-8 -mt-8 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-white" />
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   <div>
                     <div className="text-xs font-medium text-purple-100">Updated</div>
                     <div className="text-sm font-bold text-white">{updatedText}</div>
@@ -118,7 +118,7 @@ function MarketsPage() {
       </div>
 
       {/* Filters Card Block */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
         <MarketFilters
           query={query}
           setQuery={setQuery}
@@ -135,7 +135,7 @@ function MarketsPage() {
       </div>
 
       {/* News Grid */}
-      <div className="container mx-auto px-4 pb-12">
+      <div className="container mx-auto px-3 sm:px-4 pb-12">
         <Suspense fallback={<GenericLoader message="Loading news" size="medium" fullScreen={false} />}>
           <MarketNewsGrid
             items={items}

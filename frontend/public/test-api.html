@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Diagnostic Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0c0;
+        }
+        .output {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 15px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #f00;
+        }
+        .success {
+            color: #0f0;
+        }
+        .warning {
+            color: #ff0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 API Diagnostic Test</h1>
+        <p>Test the prediction API and inspect response data</p>
+        
+        <div>
+            <button onclick="testAPI('AVGO')">Test AVGO</button>
+            <button onclick="testAPI('AAPL')">Test AAPL</button>
+            <button onclick="testAPI('TSLA')">Test TSLA</button>
+            <button onclick="testAPI('NVDA')">Test NVDA</button>
+        </div>
+
+        <div id="output" class="output"></div>
+    </div>
+
+    <script>
+        async function testAPI(symbol) {
+            const output = document.getElementById('output');
+            output.innerHTML = `<span class="warning">⏳ Fetching prediction for ${symbol}...</span>\n\n`;
+
+            try {
+                const response = await fetch(`http://localhost/api/predict/${symbol}/today?model=v6`);
+                
+                output.innerHTML += `<span class="success">✅ Status: ${response.status} ${response.statusText}</span>\n`;
+                output.innerHTML += `<span class="success">✅ Content-Type: ${response.headers.get('content-type')}</span>\n\n`;
+
+                const data = await response.json();
+                
+                output.innerHTML += `<span class="success">✅ RESPONSE DATA:</span>\n`;
+                output.innerHTML += JSON.stringify(data, null, 2) + '\n\n';
+
+                // Check specific fields
+                output.innerHTML += `<span class="warning">🔍 FIELD CHECKS:</span>\n`;
+                output.innerHTML += `- success: ${data.success ? '✅' : '❌'}\n`;
+                output.innerHTML += `- data exists: ${data.data ? '✅' : '❌'}\n`;
+                output.innerHTML += `- model_version: ${data.data?.model_version || '❌ MISSING'}\n`;
+                output.innerHTML += `- prediction exists: ${data.data?.prediction ? '✅' : '❌'}\n`;
+                output.innerHTML += `- direction: ${data.data?.prediction?.direction || '❌ MISSING'}\n`;
+                output.innerHTML += `- confidence: ${data.data?.prediction?.confidence || '❌ MISSING'}\n`;
+                output.innerHTML += `- target_change_percent: ${data.data?.prediction?.target_change_percent || '❌ MISSING'}\n`;
+                output.innerHTML += `- scores: ${data.data?.scores ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- weights: ${data.data?.weights ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- contributions: ${data.data?.contributions ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- factors: ${data.data?.factors ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- us_factors: ${data.data?.us_factors ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- global_markets: ${data.data?.global_markets ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- tags: ${data.data?.tags ? '✅ ' + data.data.tags.length + ' tags' : '❌ MISSING'}\n`;
+                output.innerHTML += `- outlook: ${data.data?.outlook ? '✅' : '❌ MISSING'}\n`;
+                output.innerHTML += `- top_reasons: ${data.data?.top_reasons ? '✅ ' + data.data.top_reasons.length + ' reasons' : '❌ MISSING'}\n`;
+
+                if (data.data?.scores) {
+                    output.innerHTML += `\n<span class="warning">📊 SCORES:</span>\n`;
+                    Object.entries(data.data.scores).forEach(([k, v]) => {
+                        output.innerHTML += `- ${k}: ${v}\n`;
+                    });
+                }
+
+                if (data.data?.contributions) {
+                    output.innerHTML += `\n<span class="warning">💥 CONTRIBUTIONS:</span>\n`;
+                    Object.entries(data.data.contributions).forEach(([k, v]) => {
+                        output.innerHTML += `- ${k}: ${v}\n`;
+                    });
+                }
+
+                if (data.data?.factors) {
+                    output.innerHTML += `\n<span class="warning">🔧 FACTORS:</span>\n`;
+                    Object.entries(data.data.factors).forEach(([category, vals]) => {
+                        output.innerHTML += `\n${category}:\n`;
+                        if (typeof vals === 'object') {
+                            Object.entries(vals).forEach(([k, v]) => {
+                                output.innerHTML += `  - ${k}: ${v}\n`;
+                            });
+                        }
+                    });
+                }
+
+            } catch (error) {
+                output.innerHTML += `<span class="error">❌ ERROR: ${error.message}</span>\n`;
+                output.innerHTML += `<span class="error">${error.stack}</span>\n`;
+            }
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            testAPI('AVGO');
+        });
+    </script>
+</body>
+</html>

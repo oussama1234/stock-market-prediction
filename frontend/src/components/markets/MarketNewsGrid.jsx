@@ -51,7 +51,7 @@ const MarketNewsGrid = memo(function MarketNewsGrid({ items, loading, error, onL
       ) : (
         <Suspense fallback={<GenericLoader message="Loading news" size="small" fullScreen={false} />}>
           {/* News Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {items.map((article, idx) => (
               <div 
                 key={article.url || idx} 
@@ -72,7 +72,7 @@ const MarketNewsGrid = memo(function MarketNewsGrid({ items, loading, error, onL
               <button
                 onClick={onLoadMore}
                 disabled={loading}
-                className="group relative inline-flex items-center gap-3 px-10 py-5 rounded-2xl font-black transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95"
+                className="group relative inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-5 text-sm sm:text-base rounded-2xl font-black transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-xl hover:shadow-2xl transform hover:scale-105 active:scale-95"
               >
                 {/* Animated gradient backgrounds */}
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"></div>

@@ -71,10 +71,10 @@ const FullView = memo(({ markets, meta, onRefetch, isFetching }) => {
       } rounded-2xl opacity-20 blur-lg group-hover:opacity-30 transition-all duration-500`} />
       
       {/* Card Container */}
-      <div className="relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 overflow-hidden">
+      <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-violet-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-violet-900/20" />
           <div className="absolute inset-0" style={{
             backgroundImage: `radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
                               radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)`
@@ -109,7 +109,7 @@ const FullView = memo(({ markets, meta, onRefetch, isFetching }) => {
 
           {/* Timestamp */}
           {meta.timestamp && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500 dark:text-gray-400">
               <Activity className="w-3 h-3" />
               <span>Updated: {new Date(meta.timestamp).toLocaleTimeString()}</span>
             </div>
@@ -136,18 +136,16 @@ const HeaderSection = memo(({ onRefetch, isFetching, avgChange, weightPercent })
           <div className="absolute inset-0 blur-lg bg-blue-400 opacity-50" />
         </div>
         <div>
-          <h3 className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h3 className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
             European Markets
           </h3>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-blue-400 to-indigo-400 text-white rounded-full font-bold shadow-sm animate-pulse">
               LIVE
             </span>
-            <span className={`text-sm font-black ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-              {isPositive ? '↗' : '↘'} {isPositive ? '+' : ''}{avgChange.toFixed(2)}%
-            </span>
-            <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold shadow-sm">
-              {weightPercent}% Weight
+            <span className={`text-sm font-black flex items-center gap-1 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              {isPositive ? '+' : ''}{avgChange.toFixed(2)}%
             </span>
           </div>
         </div>
@@ -155,7 +153,7 @@ const HeaderSection = memo(({ onRefetch, isFetching, avgChange, weightPercent })
       <button
         onClick={onRefetch}
         disabled={isFetching}
-        className="group p-2.5 hover:bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95"
+        className="group p-2.5 hover:bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl transition-all duration-300 hover:scale-110 active:scale-95"
         title="Refresh data"
       >
         <RefreshCw className={`w-5 h-5 text-blue-600 group-hover:text-indigo-600 transition-colors ${isFetching ? 'animate-spin' : ''}`} />
@@ -218,7 +216,7 @@ const MarketCardEnhanced = memo(({ market }) => {
       <div className={`relative bg-gradient-to-br ${theme.bgGradient} rounded-xl p-4 border-2 ${theme.border} shadow-lg`}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
-            <div className="text-xs font-bold text-gray-600 mb-1 truncate" title={market.name}>
+            <div className="text-xs font-bold text-gray-600 dark:text-gray-800 mb-1 truncate" title={market.name}>
               {market.name}
             </div>
             {!hasError && (
@@ -227,18 +225,18 @@ const MarketCardEnhanced = memo(({ market }) => {
               </div>
             )}
             {hasError && (
-              <div className="text-xs text-gray-400 font-medium">No data</div>
+              <div className="text-xs text-gray-400 dark:text-gray-500 font-medium">No data</div>
             )}
           </div>
-          <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md`}>
+          <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center shadow-md`}>
             <Icon className={`w-5 h-5 ${theme.textColor}`} />
           </div>
         </div>
 
         {market.price && !hasError && (
-          <div className="flex items-center justify-between pt-2 border-t border-white/50">
-            <span className="text-xs text-gray-600 font-medium">Index</span>
-            <span className="text-xs font-bold text-gray-700">
+          <div className="flex items-center justify-between pt-2 border-t border-white/50 dark:border-gray-600/50">
+            <span className="text-xs text-gray-600 dark:text-gray-800 font-medium">Index</span>
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-800">
               {market.price.toLocaleString()}
             </span>
           </div>
@@ -270,13 +268,15 @@ const InfluenceMeterEnhanced = memo(({ score, impactPercent, weightPercent, avgC
   }), [isBullish]);
 
   return (
-    <div className="pt-6 border-t-2 border-gray-200">
+    <div className="pt-6 border-t-2 border-gray-200 dark:border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-blue-600" />
-          <span className="text-sm font-black text-gray-900">Market Influence</span>
-          <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-bold">
-            {weightPercent}% Weight
+          <span className="text-sm font-black text-gray-900 dark:text-white">Market Influence</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+            avgChange > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {avgChange > 0 ? '+' : ''}{avgChange.toFixed(2)}% Avg Change
           </span>
         </div>
         {!isNeutral && (
@@ -285,7 +285,7 @@ const InfluenceMeterEnhanced = memo(({ score, impactPercent, weightPercent, avgC
           </div>
         )}
         {isNeutral && (
-          <div className="px-3 py-1 rounded-full text-xs font-bold text-gray-600 bg-gray-200">
+          <div className="px-3 py-1 rounded-full text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-200 dark:bg-gray-600">
             Neutral
           </div>
         )}
@@ -303,30 +303,30 @@ const InfluenceMeterEnhanced = memo(({ score, impactPercent, weightPercent, avgC
 
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+        <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-200 dark:border-blue-700">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <BarChart3 className="w-3 h-3 text-blue-600" />
-            <div className="text-xs text-gray-600 font-semibold">Score</div>
+            <BarChart3 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+            <div className="text-xs text-gray-600 dark:text-gray-300 font-semibold">Score</div>
           </div>
           <div className={`text-lg font-black ${theme.textColor}`}>
             {score > 0 ? '+' : ''}{score.toFixed(2)}
           </div>
         </div>
         
-        <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+        <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl border border-purple-200 dark:border-purple-700">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <Activity className="w-3 h-3 text-purple-600" />
-            <div className="text-xs text-gray-600 font-semibold">Impact</div>
+            <Activity className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+            <div className="text-xs text-gray-600 dark:text-gray-300 font-semibold">Contribution</div>
           </div>
-          <div className="text-lg font-black text-purple-600">
-            {(impactPercent * 100).toFixed(0)}%
+          <div className={`text-lg font-black ${isBullish ? 'text-green-600' : 'text-red-600'}`}>
+            {score > 0 ? '+' : ''}{(Math.abs(score) * 100).toFixed(1)}%
           </div>
         </div>
         
-        <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-200">
+        <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 rounded-xl border border-orange-200 dark:border-orange-700">
           <div className="flex items-center justify-center gap-1 mb-1">
-            <TrendingUp className="w-3 h-3 text-orange-600" />
-            <div className="text-xs text-gray-600 font-semibold">Avg</div>
+            <TrendingUp className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+            <div className="text-xs text-gray-600 dark:text-gray-300 font-semibold">Avg</div>
           </div>
           <div className={`text-lg font-black ${theme.textColor}`}>
             {avgChange > 0 ? '+' : ''}{avgChange.toFixed(2)}%
@@ -335,13 +335,13 @@ const InfluenceMeterEnhanced = memo(({ score, impactPercent, weightPercent, avgC
       </div>
 
       {/* Info Box */}
-      <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-xl border-2 border-blue-200">
-        <p className="text-xs text-blue-900 leading-relaxed font-medium">
-          <strong className="font-black">Impact Analysis:</strong> European markets have{' '}
-          <span className="font-black text-indigo-600">30%</span>{' '}
-          weight in today's predictions with a{' '}
+      <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/30 dark:via-indigo-900/30 dark:to-purple-900/30 rounded-xl border-2 border-blue-200 dark:border-blue-700">
+        <p className="text-xs text-blue-900 dark:text-blue-100 leading-relaxed font-medium">
+          <strong className="font-black">Impact Analysis:</strong> European markets showing{' '}
+          <span className={`font-black ${theme.textColor}`}>{avgChange > 0 ? '+' : ''}{avgChange.toFixed(2)}%</span>{' '}
+          average change with a{' '}
           <span className={`font-black ${theme.textColor}`}>{strength.toLowerCase()} {!isNeutral && direction.toLowerCase()}</span>{' '}
-          influence (score: {score.toFixed(2)}). Local US factors now have the highest weight (50%).
+          influence (score: {score.toFixed(2)}) on today's prediction.
         </p>
       </div>
     </div>
@@ -359,17 +359,14 @@ const CompactView = memo(({ markets, meta, onRefetch, isFetching }) => {
   const isPositive = avgChange > 0;
 
   return (
-    <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg p-4 border border-blue-200 hover:shadow-xl transition-shadow">
+    <div className="bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/30 rounded-xl shadow-lg p-4 border border-blue-200 dark:border-blue-700 hover:shadow-xl transition-shadow">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Globe2 className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-bold text-gray-900">European Markets</span>
-          <span className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded-full font-bold">
-            {weightPercent}%
-          </span>
+          <span className="text-sm font-bold text-gray-900 dark:text-white">European Markets</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-black ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+          <span className={`text-sm font-black ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {isPositive ? '+' : ''}{avgChange.toFixed(2)}%
           </span>
           <button
@@ -384,9 +381,9 @@ const CompactView = memo(({ markets, meta, onRefetch, isFetching }) => {
 
       <div className="space-y-2">
         {Object.entries(markets).slice(0, 3).map(([key, market]) => (
-          <div key={key} className="flex items-center justify-between text-xs p-2 bg-white rounded-lg shadow-sm">
-            <span className="text-gray-700 font-medium">{market.name.split(' ')[0]}</span>
-            <span className={`font-bold ${market.change_percent > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div key={key} className="flex items-center justify-between text-xs p-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+            <span className="text-gray-700 dark:text-gray-300 font-medium">{market.name.split(' ')[0]}</span>
+            <span className={`font-bold ${market.change_percent > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
               {market.change_percent > 0 ? '+' : ''}{market.change_percent?.toFixed(2)}%
             </span>
           </div>

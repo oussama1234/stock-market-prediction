@@ -13,7 +13,7 @@ class Stock extends Model
 
     protected $fillable = [
         'symbol', 'name', 'exchange', 'currency', 'country', 'type',
-        'industry', 'sector', 'description', 'logo_url', 'website',
+        'industry', 'sector', 'category_id', 'description', 'logo_url', 'website',
         'market_cap', 'shares_outstanding', 'metadata', 'last_fetched_at',
     ];
 
@@ -22,6 +22,7 @@ class Stock extends Model
         'last_fetched_at' => 'datetime',
         'market_cap' => 'integer',
         'shares_outstanding' => 'integer',
+        'category_id' => 'integer',
     ];
 
     // Relationships
@@ -29,6 +30,10 @@ class Stock extends Model
     public function prices(): HasMany { return $this->hasMany(StockPrice::class); }
     public function newsArticles(): HasMany { return $this->hasMany(NewsArticle::class); }
     public function predictions(): HasMany { return $this->hasMany(Prediction::class); }
+    
+    public function category(): \Illuminate\Database\Eloquent\Relations\BelongsTo {
+        return $this->belongsTo(StockCategory::class, 'category_id');
+    }
     
     public function latestPrice() {
         return $this->hasOne(StockPrice::class)->latestOfMany('price_date');

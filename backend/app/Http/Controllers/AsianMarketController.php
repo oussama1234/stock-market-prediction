@@ -42,6 +42,7 @@ class AsianMarketController extends Controller
                     'asian_impact_percent' => $normalized['asian_impact_percent'],
                     'valid_markets' => $normalized['valid_markets'],
                     'total_markets' => $normalized['total_markets'],
+                    'impact_weight' => 20,
                     'timestamp' => now()->toIso8601String(),
                 ]
             ]);

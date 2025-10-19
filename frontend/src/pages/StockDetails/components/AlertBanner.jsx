@@ -66,21 +66,21 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
   const { bgColor, textColor, borderColor, IconComponent, iconColor, message, confidence, majorAlerts } = alertData;
 
   return (
-    <div className={`${bgColor} border-2 ${borderColor} rounded-2xl p-6 mb-6 shadow-lg animate-fade-in-down`}>
-      <div className="flex items-start gap-4">
+    <div className={`${bgColor} border-2 ${borderColor} rounded-2xl p-4 sm:p-6 mb-6 shadow-lg animate-fade-in-down`}>
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* Animated Icon */}
-        <div className={`${iconColor} animate-bounce`}>
-          <IconComponent className="w-12 h-12" strokeWidth={2.5} />
+        <div className={`${iconColor} animate-bounce flex-shrink-0`}>
+          <IconComponent className="w-10 h-10 sm:w-12 sm:h-12" strokeWidth={2.5} />
         </div>
         
         <div className="flex-1">
           {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`text-xl font-bold ${textColor} flex items-center gap-2`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-3">
+            <h3 className={`text-lg sm:text-xl font-bold ${textColor} flex flex-wrap items-center gap-2`}>
               {message}
               {autoRegenerating && (
-                <span className="inline-flex items-center gap-1 text-sm font-normal text-indigo-600 animate-pulse">
-                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <span className="inline-flex items-center gap-1 text-xs sm:text-sm font-normal text-indigo-600 animate-pulse">
+                  <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -88,7 +88,7 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
                 </span>
               )}
             </h3>
-            <div className={`px-3 py-1 rounded-full text-sm font-bold ${textColor} bg-white bg-opacity-50`}>
+            <div className={`px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-bold ${textColor} bg-white bg-opacity-50`}>
               {confidence}% Confidence
             </div>
           </div>
@@ -97,8 +97,8 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
           {majorAlerts && majorAlerts.length > 0 ? (
             <div className="space-y-2">
               {majorAlerts.slice(0, 3).map((alert, idx) => (
-                <div key={idx} className="flex items-start gap-3 bg-white bg-opacity-60 rounded-lg p-3 hover:bg-opacity-80 transition-all">
-                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                <div key={idx} className="flex items-start gap-2 sm:gap-3 bg-white bg-opacity-60 rounded-lg p-2.5 sm:p-3 hover:bg-opacity-80 transition-all">
+                  <div className={`flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                     alert.sentiment === 'bullish' ? 'bg-green-500 text-white' :
                     alert.sentiment === 'bearish' ? 'bg-red-500 text-white' :
                     'bg-gray-500 text-white'
@@ -106,7 +106,7 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-semibold ${textColor} text-sm line-clamp-2 mb-1`}>
+                    <p className={`font-semibold ${textColor} text-xs sm:text-sm line-clamp-2 mb-1`}>
                       {alert.article?.title || 'News article'}
                     </p>
                     {alert.matchedKeywords && alert.matchedKeywords.length > 0 && (
@@ -114,7 +114,7 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
                         {alert.matchedKeywords.slice(0, 4).map((kw, i) => (
                           <span
                             key={i}
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            className={`px-1.5 sm:px-2 py-0.5 rounded-full text-xs font-medium ${
                               kw.impact === 'bullish' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
                             }`}
                           >
@@ -124,7 +124,7 @@ export default function AlertBanner({ newsSentiment, autoRegenerating }) {
                       </div>
                     )}
                   </div>
-                  <div className={`flex-shrink-0 text-lg font-bold ${textColor}`}>
+                  <div className={`flex-shrink-0 text-base sm:text-lg font-bold ${textColor}`}>
                     {alert.score > 0 ? '+' : ''}{alert.score?.toFixed(1) || '0.0'}
                   </div>
                 </div>

@@ -44,20 +44,24 @@ class PredictionController extends Controller
     public function predict(Request $request, string $ticker)
     {
         $request->validate([
-            'horizon' => 'nullable|in:today,tomorrow,week,month',
+'horizon' => 'nullable|in:today,tomorrow,week,month',
+            'model' => 'nullable|in:v4,v6',
         ]);
         
-        $horizon = $request->get('horizon', 'today');
+$horizon = $request->get('horizon', 'today');
+        $model = $request->get('model', 'v6');
         
         try {
             $stock = Stock::where('symbol', strtoupper($ticker))->firstOrFail();
             
             // Check cache first
-            $cacheKey = "prediction_{$horizon}_{$stock->symbol}";
+$cacheKey = "prediction_{$model}_{$horizon}_{$stock->symbol}";
             $cacheTTL = $horizon === 'today' ? 60 : 300; // 1 min for today, 5 min for others
             
-            $prediction = Cache::remember($cacheKey, $cacheTTL, function () use ($stock, $horizon) {
-                return $this->predictionService->getPredictionForHorizon($stock, $horizon);
+$prediction = Cache::remember($cacheKey, $cacheTTL, function () use ($stock, $horizon, $model) {
+// Load category inside cache callback to avoid serialization issues
+$stock->load('category');
+return $this->predictionService->getPredictionForHorizon($stock, $horizon, $model);
             });
             
             return response()->json([
@@ -229,14 +233,16 @@ class PredictionController extends Controller
     {
         $validated = $request->validate([
             'symbol' => 'required|string|max:10',
-            'horizon' => 'nullable|in:today,tomorrow,week,month',
+'horizon' => 'nullable|in:today,tomorrow,week,month',
+            'model' => 'nullable|in:v4,v6',
         ]);
         
         $ticker = strtoupper($validated['symbol']);
-        $horizon = $validated['horizon'] ?? 'today';
+$horizon = $validated['horizon'] ?? 'today';
+        $model = $validated['model'] ?? 'v6';
         
         // Delegate to predict method
-        $request->merge(['horizon' => $horizon]);
+$request->merge(['horizon' => $horizon, 'model' => $model]);
         return $this->predict($request, $ticker);
     }
     
@@ -254,11 +260,13 @@ class PredictionController extends Controller
         $validated = $request->validate([
             'symbols' => 'required|array|min:1|max:10',
             'symbols.*' => 'required|string|max:10',
-            'horizon' => 'nullable|in:today,tomorrow,week,month',
+'horizon' => 'nullable|in:today,tomorrow,week,month',
+            'model' => 'nullable|in:v4,v6',
         ]);
         
         $symbols = array_map('strtoupper', $validated['symbols']);
-        $horizon = $validated['horizon'] ?? 'today';
+$horizon = $validated['horizon'] ?? 'today';
+        $model = $validated['model'] ?? 'v6';
         
         $results = [];
         $errors = [];
@@ -267,11 +275,13 @@ class PredictionController extends Controller
             try {
                 $stock = Stock::where('symbol', $symbol)->firstOrFail();
                 
-                $cacheKey = "prediction_{$horizon}_{$stock->symbol}";
+$cacheKey = "prediction_{$model}_{$horizon}_{$stock->symbol}";
                 $cacheTTL = $horizon === 'today' ? 60 : 300;
                 
-                $prediction = Cache::remember($cacheKey, $cacheTTL, function () use ($stock, $horizon) {
-                    return $this->predictionService->getPredictionForHorizon($stock, $horizon);
+$prediction = Cache::remember($cacheKey, $cacheTTL, function () use ($stock, $horizon, $model) {
+// Load category inside cache callback to avoid serialization issues
+$stock->load('category');
+return $this->predictionService->getPredictionForHorizon($stock, $horizon, $model);
                 });
                 
                 $results[] = [

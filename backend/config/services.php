@@ -51,4 +51,8 @@ return [
         'api_key' => env('POLYGON_API_KEY'),
     ],
 
+    'python' => [
+        'executable' => env('PYTHON_PATH', 'python'),
+    ],
+
 ];

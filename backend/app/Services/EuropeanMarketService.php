@@ -502,7 +502,7 @@ class EuropeanMarketService
             'confidence' => $confidence,
             'positive_markets' => $positiveMarkets,
             'negative_markets' => $negativeMarkets,
-            'impact_weight' => 50, // European markets have 50% weight
+            'impact_weight' => 30, // European markets have 30% weight in quick_model_v4
         ];
     }
 }

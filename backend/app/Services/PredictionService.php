@@ -254,7 +254,7 @@ class PredictionService
      * @param string $horizon ('today', 'tomorrow', 'week', 'month')
      * @return array
      */
-    public function getPredictionForHorizon(Stock $stock, string $horizon = 'today'): array
+public function getPredictionForHorizon(Stock $stock, string $horizon = 'today', string $model = 'v6'): array
     {
         try {
             // Only 'today' is supported in quick_model_v2
@@ -264,7 +264,7 @@ class PredictionService
             }
             
             // Call Python quick_model_v4.py for prediction (with European + Asian markets)
-            $pythonPath = base_path('python/models/quick_model_v4.py');
+$pythonPath = base_path($model === 'v6' ? 'python/models/quick_model_v6.py' : 'python/models/quick_model_v4.py');
             $asianMarketService = app(AsianMarketService::class);
             $europeanMarketService = app(EuropeanMarketService::class);
             
@@ -276,11 +276,124 @@ class PredictionService
             $europeanMarkets = $europeanMarketService->getTodayChanges();
             $europeanNormalized = $europeanMarketService->normalizeForModel($europeanMarkets);
             
-            // Get stock data
+            // Get stock data with category information
             $stockData = $this->prepareStockData($stock);
+            
+            // CRITICAL: Ensure category relationship is loaded (may be lost during cache serialization)
+            if (!$stock->relationLoaded('category')) {
+                $stock->load('category');
+            }
+            
+            // Add category-based volatility multiplier
+            if ($stock->category && is_object($stock->category)) {
+                $stockData['category_multiplier'] = (float) $stock->category->volatility_multiplier;
+                $stockData['typical_daily_range_min'] = (float) $stock->category->typical_daily_range_min;
+                $stockData['typical_daily_range_max'] = (float) $stock->category->typical_daily_range_max;
+                $stockData['high_momentum'] = (bool) $stock->category->high_momentum;
+                
+                Log::info("Category data for {$stock->symbol}", [
+                    'category' => $stock->category->name,
+                    'multiplier' => $stockData['category_multiplier'],
+                    'range' => [
+                        'min' => $stockData['typical_daily_range_min'],
+                        'max' => $stockData['typical_daily_range_max'],
+                    ],
+                ]);
+            } else {
+                // Default values if no category assigned
+                $stockData['category_multiplier'] = 1.0;
+                $stockData['typical_daily_range_min'] = 0.5;
+                $stockData['typical_daily_range_max'] = 2.0;
+                $stockData['high_momentum'] = false;
+                
+                Log::warning("No category assigned for {$stock->symbol}, using defaults");
+            }
+            
+            // CRITICAL: Override 1-day change with FRESH API data (do this AFTER prepareStockData to avoid cache)
+            try {
+                $stockService = app(\App\Services\StockService::class);
+                $freshQuote = $stockService->getQuote($stock->symbol);
+                if ($freshQuote && isset($freshQuote['change_percent'])) {
+                    $stockData['price_change_1d'] = (float) $freshQuote['change_percent'];
+                    Log::info("Overrode price_change_1d with fresh API data for {$stock->symbol}: {$stockData['price_change_1d']}%");
+                }
+            } catch (\Exception $e) {
+                Log::warning("Could not get fresh quote for price_change_1d override: " . $e->getMessage());
+            }
             
             // Prepare input for Python script - merge all market data
             $input = array_merge($stockData, $asianNormalized, $europeanNormalized);
+
+            // Add US factors (indices) and global sentiment for v6 model
+            try {
+                $marketIndexService = app(\App\Services\MarketIndexService::class);
+                $indices = $marketIndexService->getAllIndices();
+                $input['sp500_change'] = (float) ($indices['sp500']['change_percent'] ?? 0);
+                $input['nasdaq_change'] = (float) ($indices['nasdaq']['change_percent'] ?? 0);
+                $input['russell_2000_change'] = (float) ($indices['russell2000']['change_percent'] ?? 0);
+            } catch (\Throwable $e) {
+                // Safe defaults
+                $input['sp500_change'] = $input['sp500_change'] ?? 0.0;
+                $input['nasdaq_change'] = $input['nasdaq_change'] ?? 0.0;
+                $input['russell_2000_change'] = $input['russell_2000_change'] ?? 0.0;
+            }
+            try {
+                $globalSentimentService = app(\App\Services\GlobalMarketSentimentService::class);
+                $gm = $globalSentimentService->getGlobalMarketSentiment();
+                $input['fed_sentiment_score'] = (float) ($gm['overall_score'] ?? 0);
+            } catch (\Throwable $e) {
+                $input['fed_sentiment_score'] = $input['fed_sentiment_score'] ?? 0.0;
+            }
+
+            // Try to enrich with macro proxies (GLD, USO) and 10Y yield (^TNX)
+            $stockService = app(\App\Services\StockService::class);
+            
+            // Gold
+            if (!isset($input['gold_change'])) {
+                try {
+                    $gld = $stockService->getQuote('GLD');
+                    if ($gld && isset($gld['change_percent'])) {
+                        $input['gold_change'] = (float) $gld['change_percent'];
+                        Log::info("Fetched gold_change: {$input['gold_change']}%");
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Failed to fetch gold_change: " . $e->getMessage());
+                }
+            }
+            
+            // Oil
+            if (!isset($input['oil_change'])) {
+                try {
+                    $uso = $stockService->getQuote('USO');
+                    if ($uso && isset($uso['change_percent'])) {
+                        $input['oil_change'] = (float) $uso['change_percent'];
+                        Log::info("Fetched oil_change: {$input['oil_change']}%");
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning("Failed to fetch oil_change: " . $e->getMessage());
+                }
+            }
+            
+            // 10Y Treasury Yield
+            if (!isset($input['treasury_yield_10y'])) {
+                try {
+                    $tnx = $stockService->getQuote('^TNX');
+                    Log::info("^TNX quote response: " . json_encode($tnx));
+                    
+                    // Yahoo ^TNX is yield*10; normalize to %
+                    if ($tnx && isset($tnx['current_price'])) {
+                        $input['treasury_yield_10y'] = round(((float)$tnx['current_price']) / 10.0, 2);
+                        Log::info("Fetched treasury_yield_10y: {$input['treasury_yield_10y']}%");
+                    } else {
+                        // Default to reasonable current rate if fetch fails
+                        $input['treasury_yield_10y'] = 4.50;
+                        Log::warning("^TNX fetch returned no data, using default: 4.50%");
+                    }
+                } catch (\Throwable $e) {
+                    $input['treasury_yield_10y'] = 4.50;
+                    Log::warning("Failed to fetch ^TNX: " . $e->getMessage() . ", using default: 4.50%");
+                }
+            }
             
             // CRITICAL: Ensure all numeric values are proper floats/ints (not strings)
             $input = $this->sanitizeNumericValues($input);
@@ -321,7 +434,7 @@ class PredictionService
             // Enhance result with market details and price
             $result['asian_markets'] = $asianMarkets;
             $result['european_markets'] = $europeanMarkets;
-            $result['model_version'] = 'quick_model_v4';
+$result['model_version'] = $model === 'v6' ? 'quick_model_v6' : 'quick_model_v4';
             $result['horizon'] = $horizon;
             $result['generated_at'] = now()->toIso8601String();
             $result['market_influences'] = [
@@ -351,6 +464,16 @@ class PredictionService
             $result['current_price'] = (float) $currentPrice;
             $result['news_sentiment_score'] = $stockData['news_sentiment_score'] ?? 0.0;
             
+            // Normalize expected move sign to match label (guard against UI inconsistencies)
+            if (isset($result['label']) && isset($result['expected_pct_move']) && is_numeric($result['expected_pct_move'])) {
+                $move = (float) $result['expected_pct_move'];
+                if ($result['label'] === 'BULLISH' && $move < 0) {
+                    $result['expected_pct_move'] = abs($move);
+                } elseif ($result['label'] === 'BEARISH' && $move > 0) {
+                    $result['expected_pct_move'] = -abs($move);
+                }
+            }
+            
             // Add database-based change values if available
             if (isset($quote['db_change'])) {
                 $result['db_change'] = (float) $quote['db_change'];
@@ -364,6 +487,26 @@ class PredictionService
                 $result['api_change'] = (float) $quote['change'];
                 $result['api_change_percent'] = (float) $quote['change_percent'];
                 $result['api_previous_close'] = (float) $quote['previous_close'];
+            }
+            
+            // Compute category-aware predicted price range if we have an expected move
+            if (isset($result['expected_pct_move']) && is_numeric($result['expected_pct_move']) && $result['current_price'] > 0) {
+                try {
+                    $confidence = isset($result['probability']) && is_numeric($result['probability'])
+                        ? max(0.0, min(1.0, (float) $result['probability']))
+                        : 0.7;
+                    $range = $this->calculateCategoryAwarePriceRange(
+                        (float) $result['current_price'],
+                        (float) $result['expected_pct_move'],
+                        $stock,
+                        (float) $confidence
+                    );
+                    $result['predicted_price'] = $range['predicted_price'];
+                    $result['predicted_low'] = $range['predicted_low'];
+                    $result['predicted_high'] = $range['predicted_high'];
+                } catch (\Throwable $e) {
+                    // Non-fatal
+                }
             }
             
             Log::info("Prediction for {$stock->symbol} - current_price: {$result['current_price']}, db_change: " . ($result['db_change'] ?? 'N/A'));
@@ -436,7 +579,7 @@ class PredictionService
         $close = $latestPrice?->close ?? 100.0;
         $volume = $latestPrice?->volume ?? 1000000;
         
-        // Initialize base data
+        // Initialize base data with fundamentals defaults
         $data = [
             'symbol' => $stock->symbol,
             'close' => $close,
@@ -464,7 +607,55 @@ class PredictionService
             'volume_sma_ratio' => 1.0,
             'volume_spike' => false,
             'fear_greed_index' => 50.0,
+            'inst_flow_score' => 0.0,
+            // Fundamentals (defaults - will be enriched below)
+            'pe_ratio' => 20.0,
+            'pb_ratio' => 3.0,
+            'ps_ratio' => 5.0,
+            'eps_growth' => 0.0,
+            'revenue_growth' => 0.0,
+            'roe' => 10.0,
+            'profit_margin' => 10.0,
+            'debt_to_equity' => 1.0,
+            'dividend_yield' => 0.0,
         ];
+        
+        // Enrich with fundamental data using aggregator (Yahoo Finance + Finnhub + Alpha Vantage fallback)
+        try {
+            $aggregator = app(\App\Services\FundamentalsAggregator::class);
+            $fundamentals = $aggregator->getFundamentals($stock->symbol);
+            
+            if ($fundamentals) {
+                Log::info("Fundamentals API returned data for {$stock->symbol}", $fundamentals);
+                
+                // Merge non-null fundamental values
+                $mergedCount = 0;
+                foreach ($fundamentals as $key => $value) {
+                    if ($value !== null && isset($data[$key])) {
+                        $data[$key] = (float) $value;
+                        $mergedCount++;
+                    }
+                }
+                
+                Log::info("Fundamental data enriched for {$stock->symbol}", [
+                    'source' => 'aggregator',
+                    'merged_fields' => $mergedCount,
+                    'pe_ratio' => $data['pe_ratio'],
+                    'pb_ratio' => $data['pb_ratio'],
+                    'eps_growth' => $data['eps_growth'],
+                    'revenue_growth' => $data['revenue_growth'],
+                    'roe' => $data['roe'],
+                    'profit_margin' => $data['profit_margin'],
+                ]);
+            } else {
+                Log::warning("All fundamental data sources failed for {$stock->symbol} - using defaults");
+            }
+        } catch (\Exception $e) {
+            Log::error("Could not enrich fundamental data for {$stock->symbol}: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            // Continue with defaults
+        }
         
         // If we have enough historical data, calculate technical indicators
         if ($recentPrices->count() >= 20) {
@@ -473,12 +664,13 @@ class PredictionService
             $lows = $recentPrices->pluck('low')->reverse()->values()->toArray();
             $volumes = $recentPrices->pluck('volume')->reverse()->values()->toArray();
             
-            // Price changes
+            // Price changes from historical data
             if (count($closes) >= 7) {
                 $data['price_change_1d'] = $this->calculatePriceChangeFromArray($closes, 1);
                 $data['price_change_3d'] = $this->calculatePriceChangeFromArray($closes, 3);
                 $data['price_change_7d'] = $this->calculatePriceChangeFromArray($closes, 7);
             }
+            // Note: Fresh API override happens in getPredictionForHorizon after this function
             
             // RSI
             $rsi14 = $this->calculateRSIValue($closes, 14);
@@ -491,9 +683,12 @@ class PredictionService
             $ema26 = $this->calculateEMA($closes, 26);
             $data['ema_12'] = $ema12;
             $data['ema_26'] = $ema26;
-            $data['macd'] = $ema12 - $ema26;
-            $data['macd_signal'] = $data['macd']; // Simplified
-            $data['macd_hist'] = 0.0;
+            
+            // Calculate MACD with proper signal line and histogram
+            $macdData = $this->calculateMACD($closes, 12, 26, 9);
+            $data['macd'] = $macdData['macd'];
+            $data['macd_signal'] = $macdData['signal'];
+            $data['macd_hist'] = $macdData['histogram'];
             
             // ATR
             if (count($highs) >= 14) {
@@ -524,6 +719,14 @@ class PredictionService
             $sr = $this->calculateSupportResistance($closes, $highs, $lows, $close);
             $data['distance_to_support'] = $sr['distance_to_support'];
             $data['distance_to_resistance'] = $sr['distance_to_resistance'];
+            
+            // Institutional Flow Score (smart money indicator)
+            // Calculate based on price-volume relationship and OBV trend
+            if (count($closes) >= 10 && count($volumes) >= 10) {
+                $data['inst_flow_score'] = $this->calculateInstitutionalFlow($closes, $volumes, $data['obv']);
+            } else {
+                $data['inst_flow_score'] = 0.0;
+            }
         }
         
         // Try to get Fear & Greed Index
@@ -673,6 +876,81 @@ class PredictionService
     }
     
     /**
+     * Calculate MACD with signal line and histogram
+     * 
+     * @param array $closes Array of closing prices
+     * @param int $fastPeriod Fast EMA period (default 12)
+     * @param int $slowPeriod Slow EMA period (default 26)
+     * @param int $signalPeriod Signal line EMA period (default 9)
+     * @return array ['macd' => float, 'signal' => float, 'histogram' => float]
+     */
+    protected function calculateMACD(array $closes, int $fastPeriod = 12, int $slowPeriod = 26, int $signalPeriod = 9): array
+    {
+        $count = count($closes);
+        
+        // Need at least slow period + signal period data points
+        if ($count < $slowPeriod + $signalPeriod) {
+            return [
+                'macd' => 0.0,
+                'signal' => 0.0,
+                'histogram' => 0.0,
+            ];
+        }
+        
+        // Calculate EMA series for fast and slow periods
+        $fastEMA = [];
+        $slowEMA = [];
+        $macdLine = [];
+        
+        // Initialize EMAs with SMA
+        $fastMultiplier = 2 / ($fastPeriod + 1);
+        $slowMultiplier = 2 / ($slowPeriod + 1);
+        
+        $fastEMA[0] = array_sum(array_slice($closes, 0, $fastPeriod)) / $fastPeriod;
+        $slowEMA[0] = array_sum(array_slice($closes, 0, $slowPeriod)) / $slowPeriod;
+        
+        // Calculate fast EMA series
+        for ($i = $fastPeriod; $i < $count; $i++) {
+            $fastEMA[$i - $fastPeriod + 1] = ($closes[$i] * $fastMultiplier) + ($fastEMA[$i - $fastPeriod] * (1 - $fastMultiplier));
+        }
+        
+        // Calculate slow EMA series
+        for ($i = $slowPeriod; $i < $count; $i++) {
+            $slowEMA[$i - $slowPeriod + 1] = ($closes[$i] * $slowMultiplier) + ($slowEMA[$i - $slowPeriod] * (1 - $slowMultiplier));
+        }
+        
+        // Calculate MACD line (fast EMA - slow EMA)
+        $offset = $slowPeriod - $fastPeriod;
+        for ($i = 0; $i < count($slowEMA); $i++) {
+            $macdLine[] = $fastEMA[$i + $offset] - $slowEMA[$i];
+        }
+        
+        // Calculate signal line (EMA of MACD line)
+        if (count($macdLine) < $signalPeriod) {
+            $signal = end($macdLine) ?: 0.0;
+        } else {
+            $signalMultiplier = 2 / ($signalPeriod + 1);
+            $signal = array_sum(array_slice($macdLine, 0, $signalPeriod)) / $signalPeriod;
+            
+            for ($i = $signalPeriod; $i < count($macdLine); $i++) {
+                $signal = ($macdLine[$i] * $signalMultiplier) + ($signal * (1 - $signalMultiplier));
+            }
+        }
+        
+        // Get latest MACD value
+        $macd = end($macdLine) ?: 0.0;
+        
+        // Calculate histogram
+        $histogram = $macd - $signal;
+        
+        return [
+            'macd' => round($macd, 4),
+            'signal' => round($signal, 4),
+            'histogram' => round($histogram, 4),
+        ];
+    }
+    
+    /**
      * Calculate ATR value
      */
     protected function calculateATRValue(array $highs, array $lows, array $closes, int $period = 14): float
@@ -762,6 +1040,91 @@ class PredictionService
         }
         
         return $obv;
+    }
+    
+    /**
+     * Calculate institutional flow score (smart money indicator)
+     * 
+     * Measures institutional buying/selling pressure based on:
+     * 1. Price-volume correlation (accumulation/distribution)
+     * 2. Volume behavior on up days vs down days
+     * 3. OBV trend
+     * 
+     * Returns: -1.0 (strong selling) to +1.0 (strong buying)
+     */
+    protected function calculateInstitutionalFlow(array $closes, array $volumes, float $obv): float
+    {
+        $count = min(count($closes), count($volumes));
+        if ($count < 10) {
+            return 0.0;
+        }
+        
+        // Look at last 10 days for recent institutional activity
+        $lookback = min(10, $count - 1);
+        $closes = array_slice($closes, -$lookback - 1);
+        $volumes = array_slice($volumes, -$lookback - 1);
+        
+        $upVolume = 0;
+        $downVolume = 0;
+        $upDays = 0;
+        $downDays = 0;
+        $priceVolumeCorrelation = 0;
+        
+        for ($i = 1; $i < count($closes); $i++) {
+            $priceChange = $closes[$i] - $closes[$i - 1];
+            $priceChangePercent = $closes[$i - 1] > 0 ? ($priceChange / $closes[$i - 1]) * 100 : 0;
+            $volumeChange = $volumes[$i] - $volumes[$i - 1];
+            
+            if ($priceChangePercent > 0) {
+                // Up day
+                $upVolume += $volumes[$i];
+                $upDays++;
+                
+                // Institutional buying: price up on increasing volume
+                if ($volumeChange > 0) {
+                    $priceVolumeCorrelation += abs($priceChangePercent) * ($volumes[$i] / ($volumes[$i - 1] + 1));
+                }
+            } elseif ($priceChangePercent < 0) {
+                // Down day
+                $downVolume += $volumes[$i];
+                $downDays++;
+                
+                // Institutional selling: price down on increasing volume
+                if ($volumeChange > 0) {
+                    $priceVolumeCorrelation -= abs($priceChangePercent) * ($volumes[$i] / ($volumes[$i - 1] + 1));
+                }
+            }
+        }
+        
+        // Calculate average volume per up/down day
+        $avgUpVolume = $upDays > 0 ? $upVolume / $upDays : 0;
+        $avgDownVolume = $downDays > 0 ? $downVolume / $downDays : 0;
+        
+        // Institutional accumulation: higher volume on up days than down days
+        $volumeRatio = 0;
+        if ($avgDownVolume > 0) {
+            $volumeRatio = ($avgUpVolume - $avgDownVolume) / $avgDownVolume;
+        } elseif ($avgUpVolume > 0) {
+            $volumeRatio = 1.0; // All up days
+        }
+        
+        // Normalize volume ratio to -1 to +1
+        $volumeScore = max(-1.0, min(1.0, $volumeRatio));
+        
+        // Normalize price-volume correlation
+        $correlationScore = max(-1.0, min(1.0, $priceVolumeCorrelation / 10));
+        
+        // OBV trend: positive OBV suggests accumulation
+        $obvScore = 0;
+        if ($obv != 0) {
+            // Normalize OBV to reasonable range
+            $obvScore = max(-1.0, min(1.0, $obv / (array_sum($volumes) * 2)));
+        }
+        
+        // Weighted combination
+        $instFlow = ($volumeScore * 0.4) + ($correlationScore * 0.4) + ($obvScore * 0.2);
+        
+        return round($instFlow, 4);
     }
     
     /**
@@ -880,7 +1243,8 @@ class PredictionService
             'shanghai_change_pct', 'nifty_change_pct',
             'european_avg_change', 'european_influence_score', 'european_impact_percent',
             'ftse_change_pct', 'dax_change_pct', 'cac_change_pct', 
-            'stoxx_change_pct', 'ibex_change_pct'
+            'stoxx_change_pct', 'ibex_change_pct',
+            'category_multiplier', 'typical_daily_range_min', 'typical_daily_range_max'
         ];
         
         foreach ($numericFields as $field) {
@@ -906,5 +1270,83 @@ class PredictionService
         }
         
         return $data;
+    }
+    
+    /**
+     * Calculate category-aware prediction ranges (low/high)
+     * 
+     * Uses category volatility multiplier and typical ranges to provide
+     * realistic price bounds for the prediction.
+     * 
+     * @param float $currentPrice Current stock price
+     * @param float $expectedPercentMove Expected % move from model
+     * @param Stock $stock Stock with category loaded
+     * @param float $confidence Prediction confidence (0-1)
+     * @return array ['predicted_low' => float, 'predicted_high' => float, 'predicted_price' => float]
+     */
+    public function calculateCategoryAwarePriceRange(
+        float $currentPrice,
+        float $expectedPercentMove,
+        Stock $stock,
+        float $confidence = 0.7
+    ): array {
+        // Load category if not already loaded
+        if (!$stock->relationLoaded('category')) {
+            $stock->load('category');
+        }
+        
+        // Get category parameters or use defaults
+        if ($stock->category) {
+            $volatilityMultiplier = (float) $stock->category->volatility_multiplier;
+            $rangeMin = (float) $stock->category->typical_daily_range_min;
+            $rangeMax = (float) $stock->category->typical_daily_range_max;
+        } else {
+            $volatilityMultiplier = 1.0;
+            $rangeMin = 0.5;
+            $rangeMax = 2.0;
+        }
+        
+        // Calculate predicted price
+        $predictedPrice = $currentPrice * (1 + ($expectedPercentMove / 100));
+        
+        // Calculate uncertainty range based on:
+        // 1. Category volatility
+        // 2. Confidence level (higher confidence = tighter range)
+        // 3. Typical daily range for this category
+        
+        $baseUncertainty = ($rangeMax - $rangeMin) / 2; // Average of typical range
+        $confidenceFactor = (1 - $confidence); // Lower confidence = wider range
+        $uncertaintyPercent = $baseUncertainty * $volatilityMultiplier * (0.5 + $confidenceFactor);
+        
+        // For strong predictions, tighten the range
+        if (abs($expectedPercentMove) > 3.0) {
+            $uncertaintyPercent *= 0.8; // Reduce uncertainty for strong signals
+        }
+        
+        // Calculate low and high bounds
+        if ($expectedPercentMove >= 0) {
+            // Bullish prediction: range extends more upward
+            $predictedLow = $currentPrice * (1 + ($expectedPercentMove / 100) - ($uncertaintyPercent / 100));
+            $predictedHigh = $currentPrice * (1 + ($expectedPercentMove / 100) + ($uncertaintyPercent * 1.5 / 100));
+        } else {
+            // Bearish prediction: range extends more downward
+            $predictedLow = $currentPrice * (1 + ($expectedPercentMove / 100) - ($uncertaintyPercent * 1.5 / 100));
+            $predictedHigh = $currentPrice * (1 + ($expectedPercentMove / 100) + ($uncertaintyPercent / 100));
+        }
+        
+        // Ensure low < predicted < high
+        $predictedLow = min($predictedLow, $predictedPrice);
+        $predictedHigh = max($predictedHigh, $predictedPrice);
+        
+        // Never predict below zero
+        $predictedLow = max(0.01, $predictedLow);
+        
+        return [
+            'predicted_price' => round($predictedPrice, 2),
+            'predicted_low' => round($predictedLow, 2),
+            'predicted_high' => round($predictedHigh, 2),
+            'range_percent' => round((($predictedHigh - $predictedLow) / $currentPrice) * 100, 2),
+            'category_multiplier' => $volatilityMultiplier,
+        ];
     }
 }

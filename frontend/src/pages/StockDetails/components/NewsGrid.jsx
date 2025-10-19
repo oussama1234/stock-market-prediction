@@ -39,24 +39,24 @@ export default function NewsGrid({ news = [] }) {
 
   if (!news || news.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
-        <Building className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">No News Available</h3>
-        <p className="text-gray-600">Check back later for the latest updates</p>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-8 sm:p-12 text-center border border-gray-200 dark:border-gray-800 transition-colors duration-300">
+        <Building className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">No News Available</h3>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Check back later for the latest updates</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <Building className="w-7 h-7 text-indigo-600" />
+    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-4 sm:p-6 border border-gray-200 dark:border-gray-800 transition-colors duration-300">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 flex flex-wrap items-center gap-2">
+        <Building className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 dark:text-indigo-400" />
         Latest News
-        <span className="text-sm font-normal text-gray-500 ml-2">({analyzedNews.length} articles)</span>
+        <span className="text-xs sm:text-sm font-normal text-gray-500 dark:text-gray-400">({analyzedNews.length} articles)</span>
       </h2>
 
-      {/* 3-Column Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      {/* Responsive Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
         {visibleNews.map((article, idx) => {
           const { analysis } = article;
           
@@ -93,10 +93,10 @@ export default function NewsGrid({ news = [] }) {
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`block bg-white border-2 ${sentimentColor} rounded-xl overflow-hidden hover:shadow-2xl transition-all hover:scale-[1.03] group cursor-pointer`}
+              className={`block bg-white dark:bg-gray-900 border-2 ${sentimentColor} rounded-xl overflow-hidden hover:shadow-2xl transition-all hover:scale-[1.03] group cursor-pointer`}
             >
               {/* Image */}
-              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700">
                 {article.image_url ? (
                   <>
                     <img
@@ -119,7 +119,7 @@ export default function NewsGrid({ news = [] }) {
                         <svg className="w-16 h-16 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                         </svg>
-                        <p className="text-xs text-gray-500 font-medium">{article.source || 'News Article'}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{article.source || 'News Article'}</p>
                       </div>
                     </div>
                   </>
@@ -130,7 +130,7 @@ export default function NewsGrid({ news = [] }) {
                       <svg className="w-16 h-16 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                       </svg>
-                      <p className="text-xs text-gray-500 font-medium">{article.source || 'News Article'}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{article.source || 'News Article'}</p>
                     </div>
                   </div>
                 )}
@@ -261,7 +261,7 @@ export default function NewsGrid({ news = [] }) {
           <button
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 shadow-lg hover:shadow-xl"
+            className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm sm:text-base font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 sm:gap-3 shadow-lg hover:shadow-xl"
           >
             {isLoadingMore ? (
               <>

@@ -45,7 +45,7 @@ class EuropeanMarketController extends Controller
                     'valid_markets' => $normalized['valid_markets'],
                     'total_markets' => $normalized['total_markets'],
                     'sentiment_confidence' => $sentiment['confidence'],
-                    'impact_weight' => 50,
+                    'impact_weight' => 30,
                     'timestamp' => now()->toIso8601String(),
                 ]
             ]);

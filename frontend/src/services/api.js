@@ -64,8 +64,8 @@ export const predictionAPI = {
   getHistory: (symbol, limit = 10) => 
     api.get(`/predictions/${symbol}/history?limit=${limit}`),
   // quick_model_v2 predictions with Asian markets
-  predict: (symbol, horizon = 'today') => 
-    api.post('/predictions/predict', { symbol, horizon }),
+predict: (symbol, horizon = 'today', model = 'v6') => 
+    api.post('/predictions/predict', { symbol, horizon, model }),
   predictBatch: (symbols, horizon = 'today') => 
     api.post('/predictions/batch', { symbols, horizon }),
 };

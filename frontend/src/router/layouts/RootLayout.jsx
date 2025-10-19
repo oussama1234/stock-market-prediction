@@ -13,7 +13,7 @@ import ScrollRestoration from '../../components/ScrollRestoration';
  */
 function RootLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300 overflow-x-hidden max-w-[100vw]" style={{overflowX: 'hidden', maxWidth: '100vw'}}>
       {/* Auto-scroll to top on route change */}
       <ScrollRestoration />
       

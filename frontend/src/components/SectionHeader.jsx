@@ -6,10 +6,18 @@ import { cloneElement, isValidElement } from 'react';
  * Modern animated section header with icons, gradients, and hover effects
  * Matching the StockDetails aesthetic
  */
-const SectionHeader = memo(({ icon, title, subtitle, badge, children }) => {
+const SectionHeader = memo(({ icon, title, subtitle, badge, children, centered = false, centerOnMobile = false }) => {
   return (
-    <div className="flex items-center justify-between mb-8">
-      <div className="flex items-center gap-4">
+    <div className={`flex flex-col gap-4 mb-8 ${
+      centered
+        ? 'items-center'
+        : centerOnMobile
+        ? 'items-center sm:flex-row sm:items-center sm:justify-between'
+        : 'sm:flex-row sm:items-center sm:justify-between'
+    }`}>
+      <div className={`flex gap-4 ${
+        centered ? 'flex-col items-center' : 'items-start sm:items-center'
+      }`}>
         {/* Animated icon */}
         {icon && (
           <div className="relative group">
@@ -24,8 +32,10 @@ const SectionHeader = memo(({ icon, title, subtitle, badge, children }) => {
           </div>
         )}
         
-        <div>
-          <div className="flex items-center gap-3">
+        <div className={centered ? 'text-center' : centerOnMobile ? 'text-center sm:text-left' : ''}>
+          <div className={`flex items-center gap-3 flex-wrap ${
+            centered ? 'justify-center' : centerOnMobile ? 'justify-center sm:justify-start' : ''
+          }`}>
             <h2 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
               {title}
             </h2>
@@ -43,7 +53,16 @@ const SectionHeader = memo(({ icon, title, subtitle, badge, children }) => {
 
       {/* Right-side content (e.g., tabs, buttons) */}
       {children && (
-        <div>{children}</div>
+        <div className={`w-full ${
+          centered ? 'flex justify-center' : centerOnMobile ? 'flex justify-center sm:w-auto sm:justify-end' : 'sm:w-auto'
+        }`}>
+          {!centered && !centerOnMobile && (
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {children}
+            </div>
+          )}
+          {(centered || centerOnMobile) && children}
+        </div>
       )}
     </div>
   );
@@ -57,6 +76,8 @@ SectionHeader.propTypes = {
   subtitle: PropTypes.string,
   badge: PropTypes.string,
   children: PropTypes.node,
+  centered: PropTypes.bool,
+  centerOnMobile: PropTypes.bool,
 };
 
 export default SectionHeader;
