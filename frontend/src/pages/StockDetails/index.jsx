@@ -299,7 +299,7 @@ const StockHeader = memo(({ stock, quote, symbol, currentPrice, change, changePc
       <div className="relative z-10">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-0">
           <div className="flex items-center gap-3 sm:gap-6 w-full sm:w-auto">
-            <div className="transform hover:scale-110 hover:rotate-3 transition-all duration-300 flex-shrink-0">
+            <div className="relative z-10 transform hover:scale-110 hover:rotate-3 transition-all duration-300 flex-shrink-0">
               <StockLogo symbol={stock?.symbol} logoUrl={stock?.logo_url} size="lg" className="sm:hidden" />
               <StockLogo symbol={stock?.symbol} logoUrl={stock?.logo_url} size="xl" className="hidden sm:block" />
             </div>
