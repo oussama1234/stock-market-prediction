@@ -47,10 +47,13 @@ const StockLogo = memo(({ symbol, name, logoUrl, size = 'md', className = '' }) 
   if (showFallback || !imageSrc || !imageSrc.trim() || !symbol) {
     return (
       <div
-        className={`${sizeClasses[size]} ${className} flex items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white font-bold ${textSizes[size]} flex-shrink-0 shadow-sm`}
-        title={name || symbol}
+        className={`${sizeClasses[size]} relative rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white font-bold flex-shrink-0 shadow-sm ${className}`}
       >
-        {symbol ? symbol.charAt(0).toUpperCase() : '?'}
+        <div 
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          <span className={textSizes[size]}>{symbol ? symbol.charAt(0).toUpperCase() : '?'}</span>
+        </div>
       </div>
     );
   }

@@ -353,7 +353,32 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
       <h3 className="text-xl font-black text-gray-900 dark:text-white mb-5 flex items-center gap-2">
         <Sparkles className="w-6 h-6 text-indigo-600" />
         Factor Breakdown
+        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-auto">Adaptive Weighting</span>
       </h3>
+      
+      {/* Bearish Regime Indicator */}
+      {(() => {
+        const bearishCount = Object.entries(scores || {}).filter(([key, val]) => 
+          key !== 'composite' && Number(val) < -0.05
+        ).length;
+        if (bearishCount >= 2) {
+          return (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 rounded-r-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold text-amber-900 dark:text-amber-200">
+                  Bearish Regime Detected:
+                </span>
+                <span className="text-amber-700 dark:text-amber-300">
+                  Fundamentals weight reduced (75%) to prioritize intraday signals
+                </span>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+      
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
         {items.map(({ key, label, icon: Icon, gradient, bgGradient, iconColor, iconBg }) => {
           const s = Number(scores?.[key] ?? 0);
@@ -392,7 +417,18 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Weight</span>
-                      <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{(w * 100).toFixed(0)}%</span>
+                      <div className="text-right">
+                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{(w * 100).toFixed(0)}%</span>
+                        {(() => {
+                          const baseWeights = { technical: 15, fundamentals: 10, sentiment: 20, regional: 25, liquidity: 15, fear_index: 15 };
+                          const base = baseWeights[key];
+                          const actual = (w * 100).toFixed(0);
+                          if (base && Math.abs(base - actual) > 1) {
+                            return <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(base {base}%)</span>;
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                     <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                       <div className={`h-full bg-gradient-to-r ${gradient} transition-all duration-500`} style={{ width: `${w * 100}%` }} />

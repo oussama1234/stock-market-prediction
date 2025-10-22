@@ -127,8 +127,8 @@ const FearGreedPage = memo(() => {
       
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
 
-        {/* Main Gauge Section with Gradient Border */}
-        <div className="max-w-5xl mx-auto mb-8">
+        {/* Main Gauge Section with Gradient Border - Full Width */}
+        <div className="mb-8">
           <div className="group relative">
             {/* Gradient glow */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-2xl sm:rounded-3xl opacity-20 group-hover:opacity-40 blur-sm transition-opacity duration-500"></div>
@@ -211,8 +211,8 @@ const FearGreedPage = memo(() => {
           </div>
         </div>
 
-        {/* Additional Info Section */}
-        <div className="max-w-5xl mx-auto">
+        {/* Additional Info Section - Full Width */}
+        <div>
           <div className="group relative">
             {/* Gradient glow */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 rounded-2xl opacity-20 group-hover:opacity-40 blur-sm transition-opacity duration-500"></div>

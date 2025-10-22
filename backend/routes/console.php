@@ -14,6 +14,32 @@ Artisan::command('inspire', function () {
  * Schedule stock price updates during market hours
  * Market hours: 9:30 AM - 4:00 PM EST (Monday-Friday)
  */
+
+// Update market indices every 5 minutes during market hours
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->everyFiveMinutes()
+    ->between('9:00', '16:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Update market indices (SPY, QQQ, IWM, DIA) every 5 minutes');
+
+// Update market indices once before market open
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->dailyAt('09:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Update market indices before market open');
+
+// Update market indices after market close
+Schedule::command('market:update-indices')
+    ->weekdays()
+    ->dailyAt('16:05')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Update market indices after market close');
+
 Schedule::command('stocks:update-prices --async')
     ->weekdays()
     ->hourly()

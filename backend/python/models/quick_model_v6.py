@@ -55,12 +55,13 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-TECH_WEIGHT = 0.25
-FUND_WEIGHT = 0.20
-SENT_WEIGHT = 0.20
-REGN_WEIGHT = 0.15
-LIQ_WEIGHT  = 0.10
-FEAR_WEIGHT = 0.10
+# Reweighted to prioritize global markets and reduce fundamental bias
+TECH_WEIGHT = 0.15  # Reduced from 0.25
+FUND_WEIGHT = 0.10  # Reduced from 0.20 (fundamentals less important for intraday)
+SENT_WEIGHT = 0.20  # Unchanged
+REGN_WEIGHT = 0.25  # Increased from 0.15 (global markets more important)
+LIQ_WEIGHT  = 0.15  # Increased from 0.10
+FEAR_WEIGHT = 0.15  # Increased from 0.10
 
 
 def clip(v, lo, hi):
@@ -92,9 +93,8 @@ class QuickModelV6:
         liquidity = self._score_liquidity(f)
         fear_index = self._score_fear_index(f)
 
-        # Detect strong market regime (when most factors align)
-        # If technical + sentiment + regional are ALL negative, it's a strong bearish day
-        # Fundamentals shouldn't override this for TODAY's prediction
+        # Detect bearish market regime
+        # Fundamentals shouldn't override intraday bearish signals
         tech_bearish = technical['score'] < 0
         sent_bearish = sentiment['score'] < -0.05
         regn_bearish = regional['score'] < -0.05
@@ -104,24 +104,24 @@ class QuickModelV6:
         # Count bearish signals
         bearish_count = sum([tech_bearish, sent_bearish, regn_bearish, liq_bearish, fear_bearish])
         
-        # Adjust weights for strong bearish regime (3+ bearish signals)
+        # Adjust weights based on market regime
+        # Even 2+ bearish signals should reduce fundamental weight
         fund_weight_adj = FUND_WEIGHT
-        if bearish_count >= 3:
-            # Reduce fundamental weight by 50% in strong bearish regime
-            fund_weight_adj = FUND_WEIGHT * 0.5
-            # Redistribute to technical, sentiment, regional
-            weight_boost = (FUND_WEIGHT - fund_weight_adj) / 3
-            tech_weight_adj = TECH_WEIGHT + weight_boost
-            sent_weight_adj = SENT_WEIGHT + weight_boost
-            regn_weight_adj = REGN_WEIGHT + weight_boost
-            liq_weight_adj = LIQ_WEIGHT
-            fear_weight_adj = FEAR_WEIGHT
-        else:
-            tech_weight_adj = TECH_WEIGHT
-            sent_weight_adj = SENT_WEIGHT
-            regn_weight_adj = REGN_WEIGHT
-            liq_weight_adj = LIQ_WEIGHT
-            fear_weight_adj = FEAR_WEIGHT
+        tech_weight_adj = TECH_WEIGHT
+        sent_weight_adj = SENT_WEIGHT
+        regn_weight_adj = REGN_WEIGHT
+        liq_weight_adj = LIQ_WEIGHT
+        fear_weight_adj = FEAR_WEIGHT
+        
+        if bearish_count >= 2:
+            # Reduce fundamental weight significantly (75% reduction)
+            fund_weight_adj = FUND_WEIGHT * 0.25
+            # Redistribute to technical (most), regional, sentiment
+            weight_boost = (FUND_WEIGHT - fund_weight_adj)
+            tech_weight_adj = TECH_WEIGHT + weight_boost * 0.4
+            regn_weight_adj = REGN_WEIGHT + weight_boost * 0.3
+            sent_weight_adj = SENT_WEIGHT + weight_boost * 0.2
+            liq_weight_adj = LIQ_WEIGHT + weight_boost * 0.1
 
         # Weighted composite -1..+1 with adjusted weights
         composite = (
@@ -137,9 +137,10 @@ class QuickModelV6:
         # Get category multiplier from features (default to 1.0 if not provided)
         category_multiplier = nz(f.get('category_multiplier'), 1.0)
         
-        # Apply category multiplier to composite score to amplify movements
-        # This makes high-volatility stocks move more and low-volatility stocks move less
-        composite_amplified = composite * category_multiplier
+        # NOTE: DO NOT amplify composite score here - category multiplier should only be applied
+        # once in the _expected_move calculation to avoid double-amplification
+        # The composite score represents signal strength, not final move magnitude
+        composite_amplified = composite  # No category amplification here
         composite_amplified = clip(composite_amplified, -1.0, 1.0)
         
         # Probability via logistic transform and calibration
@@ -247,15 +248,15 @@ class QuickModelV6:
         dist_res = nz(f.get('distance_to_resistance'), 0)
 
         score = 0.0
-        # RSI zone
+        # RSI zone - stronger penalty for overbought
         if rsi < 30:
             score += clip((30 - rsi) / 30.0, 0, 1) * 0.35
         elif rsi > 70:
-            score -= clip((rsi - 70) / 30.0, 0, 1) * 0.35
-        # Momentum
-        score += clip(ch1 / 6.0, -0.25, 0.25)
-        score += clip(ch3 / 15.0, -0.2, 0.2)
-        score += clip(ch7 / 25.0, -0.15, 0.15)
+            score -= clip((rsi - 70) / 30.0, 0, 1) * 0.45  # Increased from 0.35
+        # Momentum - prioritize 1-day for intraday predictions
+        score += clip(ch1 / 5.0, -0.35, 0.35)  # Increased from 0.25, reduced divisor
+        score += clip(ch3 / 15.0, -0.15, 0.15)  # Reduced from 0.2
+        score += clip(ch7 / 30.0, -0.10, 0.10)  # Reduced from 0.15, increased divisor
         # MACD
         score += clip(macd_hist / 8.0, -0.2, 0.2)
         # BB position: near lower band -> bullish mean reversion
@@ -450,6 +451,19 @@ class QuickModelV6:
 
     # ---------- Utilities ----------
     def _expected_move(self, composite: float, f: dict, category_multiplier: float = 1.0) -> float:
+        """Calculate expected price move percentage.
+        
+        Args:
+            composite: Composite score from -1 to +1 (signal strength)
+            f: Feature dictionary
+            category_multiplier: Volatility multiplier for stock category (e.g., 2.2 for semiconductors)
+        
+        Returns:
+            Expected percentage move (e.g., 2.5 for +2.5%)
+        
+        NOTE: Category multiplier is applied ONCE here, not on the composite score.
+        This prevents double-amplification that was causing unrealistic predictions.
+        """
         base = abs(composite)
         
         # Get category-specific typical range
@@ -487,16 +501,137 @@ class QuickModelV6:
         # Interpolate within range based on signal strength
         move = rng[0] + (rng[1] - rng[0]) * base
         
-        # Apply volatility amplification
+        # Apply volatility amplification from current market conditions
         move *= (1.0 + vol_amp)
         
-        # Apply category multiplier for final adjustment
+        # Apply category multiplier ONCE for final adjustment
+        # This is the ONLY place where category_multiplier should affect the magnitude
         move *= category_multiplier
         
         # Ensure we have believable non-zero movements
         move = max(abs(move), typical_min * 0.3)
         
-        return move if composite >= 0 else -move
+        # -------- Contextual caps (business rules) --------
+        # Determine market context
+        spx = nz(f.get('sp500_change'), 0)
+        ndx = nz(f.get('nasdaq_change'), 0)
+        eu_avg = nz(f.get('european_avg_change'), nz(f.get('european_influence_score'), 0))
+        as_avg = nz(f.get('asian_avg_change'), nz(f.get('asian_influence_score'), 0))
+        news_score = nz(f.get('news_sentiment_score'), 0)
+        kw_ai = nz(f.get('keyword_ai'), 0)
+        kw_exp = nz(f.get('keyword_expansion'), 0)
+        kw_beat = nz(f.get('keyword_earnings_beat'), 0)
+        kw_lay = nz(f.get('keyword_layoffs'), 0)
+        kw_tariff = nz(f.get('keyword_tariff'), 0)
+        
+        has_positive_news = (kw_ai + kw_exp + kw_beat) >= 1 or news_score >= 0.5
+        has_negative_news = (kw_lay + kw_tariff) >= 1 or news_score <= -0.5
+        
+        # Stable global markets if all within +/-0.5%
+        max_abs_global = max(abs(spx), abs(ndx), abs(eu_avg), abs(as_avg))
+        stable_global = max_abs_global <= 0.5
+        
+        # Severe bearish regime if EU/AS or US indices < -1%
+        severe_bearish = (eu_avg <= -1.0 and as_avg <= -1.0) or (spx <= -1.0 and ndx <= -1.0)
+        strong_positive_global = (eu_avg >= 1.0 and as_avg >= 1.0) or (spx >= 1.0 and ndx >= 1.0)
+        
+        # Apply business caps AFTER multipliers so final user-facing move respects constraints
+        signed_move = move if composite >= 0 else -move
+        
+        if stable_global and not has_positive_news and not has_negative_news:
+            # Normal day caps: -0.5% to +1.0%
+            upper = 1.0
+            lower = -0.5
+            if signed_move > upper:
+                signed_move = upper
+            if signed_move < lower:
+                signed_move = lower
+        else:
+            # News-driven / volatile days — compute dynamic bounds instead of hard 2% caps
+            # Signals (0..1)
+            pos_signal = max(0.0, composite)
+            neg_signal = max(0.0, -composite)
+            news_pos = max(0.0, news_score)
+            news_neg = max(0.0, -news_score)
+            global_pos = max(0.0, max(spx, ndx, eu_avg, as_avg))
+            global_neg = max(0.0, -min(spx, ndx, eu_avg, as_avg))
+
+            # Base bounds around ~1.2% with factor-driven headroom (news has bigger weight than globals)
+            up_cap = 1.2 + (pos_signal * 0.6) + (news_pos * 1.2) + (global_pos * 0.2)
+            down_cap = 1.2 + (neg_signal * 0.6) + (news_neg * 1.2) + (global_neg * 0.2)
+
+            # Boost caps slightly when strong contexts exist; require news for large jumps
+            if has_positive_news:
+                up_cap += 0.4
+                if strong_positive_global:
+                    up_cap += 0.2
+            if has_negative_news:
+                down_cap += 0.4
+                if severe_bearish:
+                    down_cap += 0.2
+
+            # If no strong news, do not allow outsized moves even on positive globals
+            if not has_positive_news:
+                up_cap = min(up_cap, 1.6)
+            if not has_negative_news:
+                down_cap = min(down_cap, 1.6)
+
+            # Category-aware moderation for globals-only scenarios (no strong news)
+            cat_mult = nz(f.get('category_multiplier'), 1.0)
+            is_blue_chip = (cat_mult <= 1.6) and (typical_max <= 4.5)
+            is_high_vol = (cat_mult >= 2.1)
+
+            if not has_positive_news and not has_negative_news:
+                # Strong global up without news -> constrain upside by category
+                if strong_positive_global or max_abs_global >= 1.0:
+                    if is_blue_chip:
+                        up_cap = min(up_cap, 0.8)
+                    elif is_high_vol:
+                        # 1.3 .. 1.6 depending on multiplier
+                        scale = clip((cat_mult - 2.0) / 0.5, 0.0, 1.0)
+                        up_cap = min(up_cap, 1.3 + 0.3 * scale)
+                    else:
+                        up_cap = min(up_cap, 1.1)
+                # Strong global down without news -> constrain downside by category (symmetric)
+                if severe_bearish or max_abs_global >= 1.0:
+                    if is_blue_chip:
+                        down_cap = min(down_cap, 0.8)
+                    elif is_high_vol:
+                        scale = clip((cat_mult - 2.0) / 0.5, 0.0, 1.0)
+                        down_cap = min(down_cap, 1.3 + 0.3 * scale)
+                    else:
+                        down_cap = min(down_cap, 1.1)
+
+            # Clamp absolute maximums
+            up_cap = clip(up_cap, 0.8, 3.0)
+            down_cap = clip(down_cap, 0.8, 3.0)
+
+            # Enforce dynamic caps
+            if signed_move > up_cap:
+                signed_move = up_cap
+            if signed_move < -down_cap:
+                signed_move = -down_cap
+
+            # Add small deterministic jitter based on inputs to avoid rigid edges
+            # Jitter amplitude scales with signal strength but always small (<= ~0.2%)
+            import math
+            jitter_amp = 0.1 + 0.1 * clip(abs(composite), 0.0, 1.0)  # 0.1% .. 0.2%
+            key = (
+                nz(f.get('close'), 0) * 0.013 +
+                nz(f.get('rsi_14'), 50) * 0.007 +
+                news_score * 3.1 +
+                spx * 0.17 + ndx * 0.19 + eu_avg * 0.23 + as_avg * 0.29
+            )
+            jitter = math.sin(key) * jitter_amp
+            signed_move += jitter
+
+            # Keep within caps after jitter
+            if signed_move > up_cap:
+                signed_move = up_cap
+            if signed_move < -down_cap:
+                signed_move = -down_cap
+        
+        return signed_move
 
     def _market_tags(self, f: dict, tech: dict, sent: dict, reg: dict, liq: dict, fear: dict, comp: float):
         tags = []
