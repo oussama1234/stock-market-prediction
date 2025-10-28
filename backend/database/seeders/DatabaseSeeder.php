@@ -17,10 +17,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             StockCategoriesSeeder::class,      // Stock categories (required)
             PriorityKeywordsSeeder::class,     // Sentiment keywords (required)
+            PopularStocksSeeder::class,        // Popular stocks (required)
             // ImportantNewsSeeder::class,     // Uncomment for testing only
         ]);
 
-        $this->command->info('✅ Essential seeders completed!');
+        $this->command->info('✅ All essential seeders completed!');
         
         // Optional: Create test user (only for development)
         if (app()->environment('local', 'development')) {
