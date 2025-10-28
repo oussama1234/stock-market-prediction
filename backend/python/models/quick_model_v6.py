@@ -417,9 +417,12 @@ class QuickModelV6:
         Fear & Greed Index ranges from 0 (Extreme Fear) to 100 (Extreme Greed)
         - 0-25: Extreme Fear (bullish contrarian signal)
         - 25-45: Fear (mild bullish)
-        - 45-55: Neutral
+        - 45-55: Neutral (slight directional bias based on exact value)
         - 55-75: Greed (mild bearish)
         - 75-100: Extreme Greed (bearish contrarian signal)
+        
+        IMPORTANT: Even at neutral (50), we provide a small non-zero score
+        to indicate market state contribution to the model.
         """
         fg = nz(f.get('fear_greed_index'), 50)
         
@@ -433,8 +436,12 @@ class QuickModelV6:
             # Fear: Mild buy signal
             score = clip((45 - fg) / 20.0, 0, 0.4)
         elif fg <= 55:
-            # Neutral zone
-            score = 0
+            # Neutral zone - provide subtle directional bias
+            # At exactly 50: score = 0.0
+            # At 45: score = +0.05 (slight bullish tilt)
+            # At 55: score = -0.05 (slight bearish tilt)
+            deviation = fg - 50  # -5 to +5
+            score = -deviation * 0.01  # Convert to -0.05 to +0.05
         elif fg < 75:
             # Greed: Mild sell signal
             score = -clip((fg - 55) / 20.0, 0, 0.4)

@@ -400,6 +400,17 @@ $pythonPath = base_path($model === 'v6' ? 'python/models/quick_model_v6.py' : 'p
             
             $inputJson = json_encode($input, JSON_NUMERIC_CHECK);
             
+            // Log the actual input data being sent to Python (for debugging)
+            Log::info("Python model input for {$stock->symbol}", [
+                'fear_greed_index' => $input['fear_greed_index'] ?? 'NOT SET',
+                'news_sentiment_score' => $input['news_sentiment_score'] ?? 'NOT SET',
+                'price_change_1d' => $input['price_change_1d'] ?? 'NOT SET',
+                'sp500_change' => $input['sp500_change'] ?? 'NOT SET',
+                'nasdaq_change' => $input['nasdaq_change'] ?? 'NOT SET',
+                'european_influence_score' => $input['european_influence_score'] ?? 'NOT SET',
+                'asian_influence_score' => $input['asian_influence_score'] ?? 'NOT SET',
+            ]);
+            
             // Execute Python script
             $pythonExecutable = config('services.python.executable', 'python');
             $command = sprintf(
@@ -734,6 +745,11 @@ $result['model_version'] = $model === 'v6' ? 'quick_model_v6' : 'quick_model_v4'
             $fearGreedService = app(FearGreedIndexService::class);
             $fearGreed = $fearGreedService->getFearGreedIndex();
             $data['fear_greed_index'] = $fearGreed['value'] ?? 50.0;
+            Log::info("Fear & Greed Index for {$stock->symbol}", [
+                'fear_greed_index' => $data['fear_greed_index'],
+                'classification' => $fearGreed['classification'] ?? 'Unknown',
+                'full_data' => $fearGreed
+            ]);
         } catch (\Exception $e) {
             // Default to neutral if service fails
             Log::warning("Fear & Greed Index unavailable: " . $e->getMessage());
@@ -766,8 +782,9 @@ $result['model_version'] = $model === 'v6' ? 'quick_model_v6' : 'quick_model_v4'
         Log::info("Stock data prepared for {$stock->symbol}", [
             'price_count' => $recentPrices->count(),
             'news_sentiment' => round($sentiment, 3),
-            'raw_sentiment' => round($rawSentiment, 2),
+            'news_sentiment_raw_db' => round($rawSentiment, 2),
             'recent_news_count' => $recentNews->count() ?? 0,
+            'fear_greed_index' => round($data['fear_greed_index'], 1),
             'price_change_1d' => round($data['price_change_1d'], 2),
             'price_change_3d' => round($data['price_change_3d'], 2),
             'price_change_7d' => round($data['price_change_7d'], 2),
@@ -776,7 +793,6 @@ $result['model_version'] = $model === 'v6' ? 'quick_model_v6' : 'quick_model_v4'
             'macd' => round($data['macd'], 3),
             'atr_14' => round($data['atr_14'], 2),
             'bb_width' => round($data['bb_width'], 2),
-            'fear_greed' => round($data['fear_greed_index'], 1),
             'volume_ratio' => round($data['volume_sma_ratio'], 2),
             'rebound_detected' => $isRebounding,
             'rebound_reason' => $reboundReason,

@@ -225,6 +225,7 @@ const MainPredictionCard = memo(({ prediction, meta, apiData, isV6, onRefetch, i
               scores={apiData.scores}
               weights={apiData.weights}
               contributions={apiData.contributions}
+              apiData={apiData}
             />
           ) : (
             (prediction.european_influence_score !== undefined || 
@@ -290,7 +291,7 @@ const MainPredictionCard = memo(({ prediction, meta, apiData, isV6, onRefetch, i
 MainPredictionCard.displayName = 'MainPredictionCard';
 
 // Factor Summary (v6) - Enhanced with colorful gradients and 3-per-row layout
-const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = {} }) => {
+const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = {}, apiData = {} }) => {
   const items = [
     { 
       key: 'technical', 
@@ -356,8 +357,33 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-auto">Adaptive Weighting</span>
       </h3>
       
-      {/* Bearish Regime Indicator */}
+      {/* Neutral Market Indicator */}
       {(() => {
+        const neutralCount = Object.entries(scores || {}).filter(([key, val]) => 
+          key !== 'composite' && Math.abs(Number(val)) < 0.05
+        ).length;
+        const totalFactors = Object.keys(scores || {}).filter(k => k !== 'composite').length;
+        
+        if (neutralCount >= Math.floor(totalFactors * 0.6)) {
+          return (
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r-lg">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <div className="font-bold text-blue-900 dark:text-blue-200 mb-1">
+                    Neutral Market Conditions Detected
+                  </div>
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    Most factors ({neutralCount}/{totalFactors}) are near neutral, indicating balanced market sentiment with no strong directional bias. 
+                    This is normal and the model is working correctly - a score of 0 means balanced conditions, not missing data.
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        // Bearish Regime Indicator
         const bearishCount = Object.entries(scores || {}).filter(([key, val]) => 
           key !== 'composite' && Number(val) < -0.05
         ).length;
@@ -405,13 +431,74 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
                 
                 {/* Metrics grid */}
                 <div className="space-y-3">
-                  {/* Score */}
+                {/* Score */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Score</span>
-                    <span className={`text-2xl font-black ${isPositive ? 'text-green-600' : s < 0 ? 'text-red-600' : 'text-gray-700'}`}>
-                      {s > 0 ? '+' : ''}{s.toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      <span className={`text-2xl font-black ${isPositive ? 'text-green-600 dark:text-green-400' : s < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white'}`}>
+                        {s > 0 ? '+' : ''}{s.toFixed(2)}
+                      </span>
+                      {/* Show neutral indicator for zero scores */}
+                      {Math.abs(s) < 0.01 && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">(Neutral)</div>
+                      )}
+                    </div>
                   </div>
+                  
+                  {/* Show raw Fear & Greed value for fear_index factor */}
+                  {key === 'fear_index' && apiData.factors?.fear_index?.fear_greed_index !== undefined && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Index Value</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">
+                            {apiData.factors.fear_index.fear_greed_index}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">/ 100</span>
+                        </div>
+                      </div>
+                      {/* Visual gauge for Fear & Greed */}
+                      <div className="h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden mb-1">
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            apiData.factors.fear_index.fear_greed_index <= 25 ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                            apiData.factors.fear_index.fear_greed_index < 45 ? 'bg-gradient-to-r from-orange-500 to-yellow-500' :
+                            apiData.factors.fear_index.fear_greed_index <= 55 ? 'bg-gradient-to-r from-green-400 to-green-500' :
+                            apiData.factors.fear_index.fear_greed_index < 75 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
+                            'bg-gradient-to-r from-purple-500 to-pink-500'
+                          }`}
+                          style={{ width: `${apiData.factors.fear_index.fear_greed_index}%` }}
+                        />
+                      </div>
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">
+                        {apiData.factors.fear_index.fear_level || 'Unknown'}
+                      </div>
+                      {/* Explanation for neutral score */}
+                      {Math.abs(apiData.factors.fear_index.fear_greed_index - 50) < 5 && (
+                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300">
+                          <div className="flex items-start gap-1">
+                            <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            <span>Neutral market (near 50) = balanced sentiment with no directional bias</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Show raw news sentiment for sentiment factor */}
+                  {key === 'sentiment' && apiData.factors?.sentiment?.news_sentiment_score !== undefined && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">News Sentiment</span>
+                        <span className={`text-lg font-black ${apiData.factors.sentiment.news_sentiment_score > 0 ? 'text-green-600' : apiData.factors.sentiment.news_sentiment_score < 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                          {apiData.factors.sentiment.news_sentiment_score > 0 ? '+' : ''}{apiData.factors.sentiment.news_sentiment_score.toFixed(3)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        F&G: {apiData.factors.sentiment.fear_greed_index || 50}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Weight with progress bar */}
                   <div>
@@ -439,14 +526,21 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
                   <div className="flex items-center justify-between pt-2 border-t border-gray-300 dark:border-gray-600">
                     <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">Impact</span>
                     <div className="flex items-center gap-2">
-                      {isPositive ? (
+                      {Math.abs(c) < 0.001 ? (
+                        <Activity className="w-4 h-4 text-gray-500" strokeWidth={3} />
+                      ) : isPositive ? (
                         <TrendingUp className="w-4 h-4 text-green-600" strokeWidth={3} />
                       ) : (
                         <TrendingDown className="w-4 h-4 text-red-600" strokeWidth={3} />
                       )}
-                      <span className={`text-xl font-black ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        {c >= 0 ? '+' : ''}{c.toFixed(3)}
-                      </span>
+                      <div className="text-right">
+                        <span className={`text-xl font-black ${Math.abs(c) < 0.001 ? 'text-gray-600 dark:text-gray-400' : isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {c >= 0 ? '+' : ''}{c.toFixed(3)}
+                        </span>
+                        {Math.abs(c) < 0.001 && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">(Neutral)</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -461,11 +555,11 @@ const FactorSummarySection = memo(({ scores = {}, weights = {}, contributions = 
 
 const USFactorsWidget = memo(({ us = {} }) => {
   const rows = [
-    { k: 'sp500_change', label: 'S&P 500', icon: TrendingUp, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
-    { k: 'nasdaq_change', label: 'Nasdaq', icon: Activity, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
-    { k: 'russell_2000_change', label: 'Russell 2000', icon: BarChart3, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
-    { k: 'treasury_yield_10y', label: '10Y Treasury', icon: Target, color: v => 'text-indigo-600' },
-    { k: 'fed_sentiment_score', label: 'FED Sentiment', icon: Brain, color: v => v > 0 ? 'text-green-600' : 'text-red-600' },
+    { k: 'sp500_change', label: 'S&P 500', icon: TrendingUp, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
+    { k: 'nasdaq_change', label: 'Nasdaq', icon: Activity, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
+    { k: 'russell_2000_change', label: 'Russell 2000', icon: BarChart3, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
+    { k: 'treasury_yield_10y', label: '10Y Treasury', icon: Target, color: v => 'text-indigo-600 dark:text-white' },
+    { k: 'fed_sentiment_score', label: 'FED Sentiment', icon: Brain, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
   ];
   
   return (
@@ -535,7 +629,7 @@ const GlobalMarketsWidget = memo(({ global = {}, asianMarkets, europeanMarkets }
                 ) : (
                   <TrendingDown className="w-4 h-4 text-red-600" strokeWidth={3} />
                 )}
-                <span className={`text-lg font-black ${val >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-lg font-black ${val >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                   {val > 0 ? '+' : ''}{val.toFixed(2)}
                 </span>
               </div>
@@ -554,12 +648,12 @@ const GlobalMarketsWidget = memo(({ global = {}, asianMarkets, europeanMarkets }
 // Technicals Widget - Enhanced with colorful design
 const TechnicalsWidget = memo(({ tech = {} }) => {
   const rows = [
-    { k: 'rsi_14', label: 'RSI-14', icon: Activity, color: v => v > 70 ? 'text-red-600' : v < 30 ? 'text-green-600' : 'text-gray-700' },
-    { k: 'macd_hist', label: 'MACD Hist', icon: TrendingUp, color: v => v > 0 ? 'text-green-600' : 'text-red-600' },
-    { k: 'bb_pct', label: 'BB Position', icon: Target, color: v => v > 0.8 ? 'text-red-600' : v < 0.2 ? 'text-green-600' : 'text-gray-700' },
-    { k: 'price_change_1d', label: '1 Day', icon: Zap, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
-    { k: 'price_change_3d', label: '3 Days', icon: Activity, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
-    { k: 'price_change_7d', label: '7 Days', icon: TrendingUp, color: v => v > 0 ? 'text-green-600' : 'text-red-600', isPct: true },
+    { k: 'rsi_14', label: 'RSI-14', icon: Activity, color: v => v > 70 ? 'text-red-600 dark:text-red-400' : v < 30 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-white' },
+    { k: 'macd_hist', label: 'MACD Hist', icon: TrendingUp, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
+    { k: 'bb_pct', label: 'BB Position', icon: Target, color: v => v > 0.8 ? 'text-red-600 dark:text-red-400' : v < 0.2 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-white' },
+    { k: 'price_change_1d', label: '1 Day', icon: Zap, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
+    { k: 'price_change_3d', label: '3 Days', icon: Activity, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
+    { k: 'price_change_7d', label: '7 Days', icon: TrendingUp, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400', isPct: true },
   ];
   
   return (
@@ -609,14 +703,14 @@ const FundamentalsWidget = memo(({ fund = {} }) => {
   );
   
   const rows = [
-    { k: 'pe_ratio', label: 'P/E Ratio', icon: Activity, color: v => v < 15 ? 'text-green-600' : v > 30 ? 'text-red-600' : 'text-gray-700', suffix: '' },
-    { k: 'pb_ratio', label: 'P/B Ratio', icon: Target, color: v => v < 3 ? 'text-green-600' : v > 5 ? 'text-red-600' : 'text-gray-700', suffix: '' },
-    { k: 'eps_growth', label: 'EPS Growth', icon: TrendingUp, color: v => v > 10 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-700', suffix: '%' },
-    { k: 'revenue_growth', label: 'Revenue Growth', icon: BarChart3, color: v => v > 10 ? 'text-green-600' : v < 0 ? 'text-red-600' : 'text-gray-700', suffix: '%' },
-    { k: 'roe', label: 'ROE', icon: Sparkles, color: v => v > 15 ? 'text-green-600' : v < 5 ? 'text-red-600' : 'text-gray-700', suffix: '%' },
-    { k: 'profit_margin', label: 'Profit Margin', icon: DollarSign, color: v => v > 15 ? 'text-green-600' : v < 5 ? 'text-red-600' : 'text-gray-700', suffix: '%' },
-    { k: 'debt_to_equity', label: 'Debt/Equity', icon: AlertTriangle, color: v => v < 1 ? 'text-green-600' : v > 2 ? 'text-red-600' : 'text-gray-700', suffix: '' },
-    { k: 'dividend_yield', label: 'Dividend Yield', icon: DollarSign, color: v => v > 2 ? 'text-green-600' : 'text-gray-700', suffix: '%' },
+    { k: 'pe_ratio', label: 'P/E Ratio', icon: Activity, color: v => v < 15 ? 'text-green-600 dark:text-green-400' : v > 30 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '' },
+    { k: 'pb_ratio', label: 'P/B Ratio', icon: Target, color: v => v < 3 ? 'text-green-600 dark:text-green-400' : v > 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '' },
+    { k: 'eps_growth', label: 'EPS Growth', icon: TrendingUp, color: v => v > 10 ? 'text-green-600 dark:text-green-400' : v < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '%' },
+    { k: 'revenue_growth', label: 'Revenue Growth', icon: BarChart3, color: v => v > 10 ? 'text-green-600 dark:text-green-400' : v < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '%' },
+    { k: 'roe', label: 'ROE', icon: Sparkles, color: v => v > 15 ? 'text-green-600 dark:text-green-400' : v < 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '%' },
+    { k: 'profit_margin', label: 'Profit Margin', icon: DollarSign, color: v => v > 15 ? 'text-green-600 dark:text-green-400' : v < 5 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '%' },
+    { k: 'debt_to_equity', label: 'Debt/Equity', icon: AlertTriangle, color: v => v < 1 ? 'text-green-600 dark:text-green-400' : v > 2 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white', suffix: '' },
+    { k: 'dividend_yield', label: 'Dividend Yield', icon: DollarSign, color: v => v > 2 ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-white', suffix: '%' },
   ];
   
   return (
@@ -684,9 +778,9 @@ const FundamentalsWidget = memo(({ fund = {} }) => {
 // Volume/Liquidity Widget - Enhanced with colorful design
 const VolumeWidget = memo(({ tech = {}, liq = {} }) => {
   const rows = [
-    { k: 'volume_sma_ratio', label: 'Relative Volume', source: tech, icon: Activity, color: v => v > 1.5 ? 'text-green-600' : v < 0.8 ? 'text-red-600' : 'text-gray-700' },
-    { k: 'inst_flow_score', label: 'Institutional Flow', source: liq, icon: TrendingUp, color: v => v > 0 ? 'text-green-600' : 'text-red-600' },
-    { k: 'atr_14', label: 'Volatility (ATR)', source: tech, icon: Zap, color: v => v > 3 ? 'text-orange-600' : 'text-gray-700' },
+    { k: 'volume_sma_ratio', label: 'Relative Volume', source: tech, icon: Activity, color: v => v > 1.5 ? 'text-green-600 dark:text-green-400' : v < 0.8 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-white' },
+    { k: 'inst_flow_score', label: 'Institutional Flow', source: liq, icon: TrendingUp, color: v => v > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' },
+    { k: 'atr_14', label: 'Volatility (ATR)', source: tech, icon: Zap, color: v => v > 3 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-white' },
   ];
   
   return (
@@ -956,7 +1050,7 @@ const MainPredictionDisplay = memo(({ isBullish, label, expectedMove, probabilit
 
               {/* Target Price */}
               <div className={`text-center p-2 sm:p-3 md:p-4 bg-gradient-to-br ${theme.bgGradient} dark:from-opacity-20 dark:to-opacity-20 rounded-lg sm:rounded-xl border ${theme.borderColor} dark:border-opacity-50 sm:border-2`}>
-                <div className="text-[10px] sm:text-xs text-gray-600 dark:text-white font-semibold mb-1 flex items-center justify-center gap-1">
+                <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-900 font-semibold mb-1 flex items-center justify-center gap-1">
                   <Target className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${theme.textColor}`} />
                   <span>Target</span>
                 </div>
