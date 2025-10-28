@@ -11,8 +11,13 @@ return new class extends Migration
         Schema::create('priority_keywords', function (Blueprint $table) {
             $table->id();
             $table->string('keyword')->unique();
+            $table->enum('sentiment', ['bullish', 'bearish'])->index();
+            $table->integer('score')->comment('Positive for bullish, negative for bearish');
             $table->boolean('active')->default(true);
             $table->timestamps();
+            
+            // Index for fast sentiment queries
+            $table->index(['sentiment', 'score', 'active']);
         });
     }
 
