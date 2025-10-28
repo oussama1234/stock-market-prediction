@@ -191,14 +191,14 @@ export default function StockHeader({ stock, quote }) {
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>💰</span>
                 <span className="text-white/70">Market Cap:</span>
-                <span className="font-bold">${formatLargeNumber(stock.market_cap * 1000000)}</span>
+                <span className="font-bold">${formatLargeNumber(stock.market_cap)}</span>
               </div>
             )}
             {stock.shares_outstanding && (
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>📈</span>
                 <span className="text-white/70">Shares:</span>
-                <span className="font-bold">{formatLargeNumber(stock.shares_outstanding * 1000000)}</span>
+                <span className="font-bold">{formatLargeNumber(stock.shares_outstanding)}</span>
               </div>
             )}
             {stock.website && (
