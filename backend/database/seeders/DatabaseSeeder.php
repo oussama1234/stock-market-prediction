@@ -13,11 +13,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Seed essential data for production
+        $this->call([
+            StockCategoriesSeeder::class,      // Stock categories (required)
+            PriorityKeywordsSeeder::class,     // Sentiment keywords (required)
+            // ImportantNewsSeeder::class,     // Uncomment for testing only
         ]);
+
+        $this->command->info('✅ Essential seeders completed!');
+        
+        // Optional: Create test user (only for development)
+        if (app()->environment('local', 'development')) {
+            User::factory()->create([
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+            ]);
+            $this->command->info('✅ Test user created for development');
+        }
     }
 }
