@@ -6,7 +6,7 @@ use App\Services\ApiClients\FinnhubClient;
 
 use App\Models\NewsArticle;
 use App\Models\Stock;
-use App\Services\ApiClients\NewsApiClient;
+use App\Services\ApiClients\NewsAPIClient;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -14,9 +14,9 @@ use Illuminate\Support\Collection;
 
 class NewsService
 {
-    protected NewsApiClient $newsApi;
+    protected NewsAPIClient $newsApi;
     
-    public function __construct(NewsApiClient $newsApi)
+    public function __construct(NewsAPIClient $newsApi)
     {
         $this->newsApi = $newsApi;
     }
