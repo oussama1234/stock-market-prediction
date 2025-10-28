@@ -187,13 +187,44 @@ class StockService
     {
         $profile = $this->finnhub->getCompanyProfile($stock->symbol);
         
+        // Fallback to Alpha Vantage if Finnhub fails
+        if (!$profile) {
+            $profile = $this->alphaVantage->getCompanyOverview($stock->symbol);
+        }
+        
         if ($profile) {
-            $stock->update([
-                'name' => $profile['name'] ?? $stock->name,
-                'market_cap' => $profile['market_cap'] ?? $stock->market_cap,
-                'shares_outstanding' => $profile['shares_outstanding'] ?? $stock->shares_outstanding,
+            $updateData = [
                 'last_fetched_at' => now(),
-            ]);
+            ];
+            
+            // Only update fields if they are currently null or if the new value is not null
+            if (!$stock->name || ($profile['name'] ?? null)) {
+                $updateData['name'] = $profile['name'] ?? $stock->name;
+            }
+            if (!$stock->logo_url || ($profile['logo_url'] ?? null)) {
+                $updateData['logo_url'] = $profile['logo_url'] ?? $stock->logo_url;
+            }
+            if (!$stock->description || ($profile['description'] ?? null)) {
+                $updateData['description'] = $profile['description'] ?? $stock->description;
+            }
+            if (!$stock->website || ($profile['website'] ?? null)) {
+                $updateData['website'] = $profile['website'] ?? $stock->website;
+            }
+            if (!$stock->industry || ($profile['industry'] ?? null)) {
+                $updateData['industry'] = $profile['industry'] ?? $stock->industry;
+            }
+            if (!$stock->sector || ($profile['sector'] ?? null)) {
+                $updateData['sector'] = $profile['sector'] ?? $stock->sector;
+            }
+            if (!$stock->market_cap || ($profile['market_cap'] ?? null)) {
+                $updateData['market_cap'] = $profile['market_cap'] ?? $stock->market_cap;
+            }
+            if (!$stock->shares_outstanding || ($profile['shares_outstanding'] ?? null)) {
+                $updateData['shares_outstanding'] = $profile['shares_outstanding'] ?? $stock->shares_outstanding;
+            }
+            
+            $stock->update($updateData);
+            Log::info("Updated stock info for {$stock->symbol}", ['updated_fields' => array_keys($updateData)]);
         }
     }
     
