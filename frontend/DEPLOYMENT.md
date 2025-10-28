@@ -5,87 +5,74 @@
 npm run build
 ```
 
-## Deploy
+## Deploy for LiteSpeed
 
-### For Apache (.htaccess)
-1. Copy the entire `dist/` folder to your web server
-2. Ensure `.htaccess` file is included in the `dist/` folder
-3. Make sure `mod_rewrite` is enabled:
+1. **Copy the entire `dist/` folder to your web server**
    ```bash
-   sudo a2enmod rewrite
-   sudo systemctl restart apache2
-   ```
-4. Ensure `AllowOverride All` is set in your Apache config:
-   ```apache
-   <Directory /var/www/stockmarket>
-       AllowOverride All
-   </Directory>
+   scp -r dist/* user@server:/path/to/public_html/
    ```
 
-### For Nginx
-1. Copy the entire `dist/` folder to your web server
-2. Update your Nginx site configuration with the config from `nginx.conf`
-3. The key line is: `try_files $uri $uri/ /index.html;`
-4. Test and reload Nginx:
+2. **Verify `.htaccess` is in place**
    ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
+   ls -la /path/to/public_html/.htaccess
    ```
+   The `.htaccess` file should already be in the `dist/` folder after build.
 
-## Example Nginx Configuration
+3. **That's it!** LiteSpeed automatically reads `.htaccess` files
 
-```nginx
-server {
-    listen 80;
-    server_name stockmarket.oussamameqqadmi.site;
-    
-    root /var/www/stockmarket/dist;
-    index index.html;
-    
-    # SPA routing - THIS IS THE IMPORTANT PART
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
+## How it works
+
+The `.htaccess` file redirects all non-file requests to `index.html`, allowing React Router to handle routing:
+
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
 ```
 
-## Troubleshooting 404 Errors
+## Troubleshooting 404 Errors on LiteSpeed
 
 If you still get 404 errors on direct URL access:
 
-### Check 1: Verify server type
+### Check 1: Verify `.htaccess` exists
 ```bash
-# Check if Apache
-apache2 -v
-
-# Check if Nginx
-nginx -v
+ls -la /path/to/public_html/.htaccess
 ```
 
-### Check 2: For Apache, verify mod_rewrite
-```bash
-apache2ctl -M | grep rewrite
-# Should show: rewrite_module (shared)
+### Check 2: Check `.htaccess` content
+Make sure it contains:
+```apache
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
 ```
 
-### Check 3: For Nginx, verify config
+### Check 3: Verify file permissions
 ```bash
-# Check current config
-sudo nginx -T | grep try_files
-
-# Should include: try_files $uri $uri/ /index.html;
+chmod 644 /path/to/public_html/.htaccess
+chmod 755 /path/to/public_html
 ```
 
-### Check 4: Verify .htaccess is in place (Apache only)
+### Check 4: Clear LiteSpeed cache
+From LiteSpeed admin panel or via command:
 ```bash
-ls -la /var/www/stockmarket/dist/.htaccess
+# Clear LiteSpeed cache
+sudo systemctl restart lsws
 ```
 
-### Check 5: Check permissions
+### Check 5: Rebuild and redeploy
 ```bash
-# Make sure web server can read files
-sudo chown -R www-data:www-data /var/www/stockmarket
-sudo chmod -R 755 /var/www/stockmarket
+cd frontend
+npm run build
+# Then copy dist/ to server again
 ```
 
 ## Common Issues
