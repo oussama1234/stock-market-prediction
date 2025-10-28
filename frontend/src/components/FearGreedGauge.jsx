@@ -5,9 +5,11 @@ const FearGreedGauge = memo(({ size = 'large', showDetails = true }) => {
   const [fearGreed, setFearGreed] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+  
   const fetchFearGreed = useCallback(async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/market/fear-greed-index');
+      const response = await axios.get(`${API_BASE_URL}/market/fear-greed-index`);
       if (response.data.success) {
         setFearGreed(response.data.data);
       }
@@ -16,7 +18,7 @@ const FearGreedGauge = memo(({ size = 'large', showDetails = true }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [API_BASE_URL]);
 
   useEffect(() => {
     fetchFearGreed();

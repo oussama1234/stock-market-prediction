@@ -15,11 +15,17 @@ return [
     |
     */
 
-    'paths' => ['*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        env('FRONTEND_URL', 'http://localhost:3000'),
+        'https://stockmarket.oussamameqqadmi.site',
+        'http://stockmarket.oussamameqqadmi.site',
+        'http://localhost:3000',
+        'http://localhost:5173', // Vite dev server
+    ],
 
     'allowed_origins_patterns' => [],
 
