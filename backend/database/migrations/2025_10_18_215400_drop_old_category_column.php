@@ -11,11 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('stocks', function (Blueprint $table) {
-            // Drop old category and volatility_multiplier columns
-            // We now use the stock_categories relationship instead
-            $table->dropColumn(['category', 'volatility_multiplier']);
-        });
+        // Drop columns only if they exist to avoid SQL errors on fresh databases
+        if (Schema::hasColumn('stocks', 'category')) {
+            Schema::table('stocks', function (Blueprint $table) {
+                $table->dropColumn('category');
+            });
+        }
+
+        if (Schema::hasColumn('stocks', 'volatility_multiplier')) {
+            Schema::table('stocks', function (Blueprint $table) {
+                $table->dropColumn('volatility_multiplier');
+            });
+        }
     }
 
     /**
@@ -24,8 +31,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('stocks', function (Blueprint $table) {
-            $table->string('category', 100)->nullable()->after('category_id');
-            $table->decimal('volatility_multiplier', 5, 2)->nullable()->after('category');
+            if (!Schema::hasColumn('stocks', 'category')) {
+                $table->string('category', 100)->nullable();
+            }
+            if (!Schema::hasColumn('stocks', 'volatility_multiplier')) {
+                $table->decimal('volatility_multiplier', 5, 2)->nullable();
+            }
         });
     }
 };
