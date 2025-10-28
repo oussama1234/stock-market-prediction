@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import StockLogo from '../../../components/StockLogo';
-import { formatVolume } from '../../../utils/formatters';
+import { formatVolume, formatLargeNumber } from '../../../utils/formatters';
 
 /**
  * StockHeader - Beautiful animated header with all stock information
@@ -191,14 +191,14 @@ export default function StockHeader({ stock, quote }) {
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>💰</span>
                 <span className="text-white/70">Market Cap:</span>
-                <span className="font-bold">${(stock.market_cap / 1000).toFixed(1)}B</span>
+                <span className="font-bold">${formatLargeNumber(stock.market_cap * 1000000)}</span>
               </div>
             )}
             {stock.shares_outstanding && (
               <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm">
                 <span>📈</span>
                 <span className="text-white/70">Shares:</span>
-                <span className="font-bold">{stock.shares_outstanding.toLocaleString()}M</span>
+                <span className="font-bold">{formatLargeNumber(stock.shares_outstanding * 1000000)}</span>
               </div>
             )}
             {stock.website && (
