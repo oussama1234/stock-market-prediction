@@ -13,7 +13,7 @@ class FetchHistoricalStockData extends Command
      *
      * @var string
      */
-    protected $signature = 'stocks:fetch-historical {symbol?} {--days=90} {--all}';
+    protected $signature = 'stocks:fetch-historical {symbol?} {--days=90} {--all} {--force : Force refetch even if data exists}';
 
     /**
      * The console command description.
@@ -42,7 +42,27 @@ class FetchHistoricalStockData extends Command
         if ($all) {
             // Fetch for all stocks
             $stocks = Stock::all();
-            $this->info("Fetching historical data for {$stocks->count()} stocks...");
+            $force = $this->option('force');
+            
+            // Filter stocks that need data (unless forced)
+            if (!$force) {
+                $stocksNeedingData = $stocks->filter(function($stock) {
+                    $count = \App\Models\StockPrice::where('stock_id', $stock->id)
+                        ->where('interval', '1day')
+                        ->count();
+                    return $count < 20; // Less than 20 days of data
+                });
+                
+                if ($stocksNeedingData->count() === 0) {
+                    $this->info("All stocks have sufficient historical data (20+ days). Use --force to refetch.");
+                    return 0;
+                }
+                
+                $stocks = $stocksNeedingData;
+                $this->info("Found {$stocks->count()} stocks needing historical data...");
+            } else {
+                $this->info("Force fetching historical data for {$stocks->count()} stocks...");
+            }
             
             $progressBar = $this->output->createProgressBar($stocks->count());
             $progressBar->start();

@@ -57,6 +57,19 @@ Schedule::command('stocks:update-prices --async')
     ->description('Update final stock prices after market close');
 
 /**
+ * Fetch historical data for stocks that need it
+ * 
+ * Automatically fetches historical price data for stocks that don't have enough data
+ * Runs daily to ensure all stocks have sufficient historical context for predictions
+ */
+Schedule::command('stocks:fetch-historical --all --days=90')
+    ->daily()
+    ->at('05:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Fetch historical data for stocks missing it');
+
+/**
  * Auto-generate predictions for all stocks
  * 
  * Runs automatically to ensure all stocks have up-to-date predictions
