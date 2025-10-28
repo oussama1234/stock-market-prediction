@@ -70,6 +70,20 @@ Schedule::command('stocks:fetch-historical --all --days=90')
     ->description('Fetch historical data for stocks missing it');
 
 /**
+ * Enrich stock metadata (logos, descriptions, etc.)
+ * 
+ * Updates missing logos, descriptions, market cap, and other metadata from APIs
+ * Runs weekly to keep stock information up-to-date
+ */
+Schedule::command('stocks:enrich-metadata --all --missing-only')
+    ->weekly()
+    ->sundays()
+    ->at('04:00')
+    ->timezone('America/New_York')
+    ->withoutOverlapping()
+    ->description('Enrich stock metadata (logos, descriptions, etc.)');
+
+/**
  * Auto-generate predictions for all stocks
  * 
  * Runs automatically to ensure all stocks have up-to-date predictions
