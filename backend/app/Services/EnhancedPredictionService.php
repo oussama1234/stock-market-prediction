@@ -267,7 +267,7 @@ class EnhancedPredictionService
         $signal = 'neutral';
         $strength = 0;
         
-        if ($ma5 && $ma20) {
+        if ($ma5 && $ma20 && $ma20 != 0) {
             if ($ma5 > $ma20 && $currentPrice > $ma5) {
                 $signal = 'bullish';
                 $strength = min(($ma5 - $ma20) / $ma20, 0.5) * 2; // Normalize to 0-1
@@ -314,7 +314,7 @@ class EnhancedPredictionService
         $upperBand = $sma + (self::BOLLINGER_STD * $stdDev);
         $lowerBand = $sma - (self::BOLLINGER_STD * $stdDev);
         
-        $bandWidth = ($upperBand - $lowerBand) / $sma;
+        $bandWidth = $sma != 0 ? ($upperBand - $lowerBand) / $sma : 0;
         
         $position = 'middle';
         $signal = 'neutral';
@@ -370,6 +370,12 @@ class EnhancedPredictionService
         
         $current = end($closes);
         $past = $closes[count($closes) - 10];
+        
+        // Prevent division by zero
+        if ($past == 0) {
+            return ['value' => 0, 'signal' => 'neutral', 'strength' => 0];
+        }
+        
         $momentum = (($current - $past) / $past) * 100;
         
         $signal = $momentum > 2 ? 'strong_bullish' : ($momentum > 0 ? 'bullish' : ($momentum < -2 ? 'strong_bearish' : 'bearish'));
@@ -393,7 +399,15 @@ class EnhancedPredictionService
         
         $returns = [];
         for ($i = 1; $i < count($closes); $i++) {
-            $returns[] = ($closes[$i] - $closes[$i - 1]) / $closes[$i - 1];
+            // Prevent division by zero
+            if ($closes[$i - 1] != 0) {
+                $returns[] = ($closes[$i] - $closes[$i - 1]) / $closes[$i - 1];
+            }
+        }
+        
+        // If we have no valid returns, return default
+        if (empty($returns)) {
+            return ['value' => 0, 'level' => 'medium'];
         }
         
         $volatility = $this->calculateStdDev($returns, count($returns)) * sqrt(252); // Annualized
@@ -437,7 +451,8 @@ class EnhancedPredictionService
         
         // ATR is average of last N true ranges
         $atr = array_sum(array_slice($trueRanges, -self::ATR_PERIOD)) / self::ATR_PERIOD;
-        $atrPercentage = ($atr / end($closes)) * 100;
+        $currentClose = end($closes);
+        $atrPercentage = $currentClose != 0 ? ($atr / $currentClose) * 100 : 0;
         
         return [
             'value' => round($atr, 2),
@@ -491,10 +506,13 @@ class EnhancedPredictionService
         $position = 'neutral';
         if ($support && $resistance) {
             $range = $resistance - $support;
-            $currentPosition = ($currentPrice - $support) / $range;
-            
-            if ($currentPosition < 0.3) $position = 'near_support';
-            elseif ($currentPosition > 0.7) $position = 'near_resistance';
+            // Prevent division by zero
+            if ($range != 0) {
+                $currentPosition = ($currentPrice - $support) / $range;
+                
+                if ($currentPosition < 0.3) $position = 'near_support';
+                elseif ($currentPosition > 0.7) $position = 'near_resistance';
+            }
         }
         
         return [

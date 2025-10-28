@@ -44,15 +44,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
             $origin = $request->header('Origin');
 
-            if (in_array($origin, $allowedOrigins)) {
+            // Always set CORS headers
+            if ($origin && in_array($origin, $allowedOrigins)) {
                 $response->headers->set('Access-Control-Allow-Origin', $origin);
             } else {
-                $response->headers->set('Access-Control-Allow-Origin', $allowedOrigins[0]);
+                // Default to first allowed origin or wildcard for allowed domains
+                $response->headers->set('Access-Control-Allow-Origin', $origin && in_array($origin, $allowedOrigins) ? $origin : '*');
             }
 
             $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, X-XSRF-TOKEN');
             $response->headers->set('Access-Control-Allow-Credentials', 'true');
+            $response->headers->set('Access-Control-Max-Age', '3600');
 
             return $response;
         });
