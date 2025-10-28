@@ -192,7 +192,7 @@ export default function StockHeader({ stock, quote }) {
                 <span>💰</span>
                 <span className="text-white/70">Market Cap:</span>
                 <span className="font-bold">
-                  ${formatLargeNumber(parseFloat(stock.market_cap) * 1000000)}
+                  ${formatLargeNumber(parseFloat(stock.market_cap))}
                 </span>
               </div>
             )}
@@ -201,7 +201,7 @@ export default function StockHeader({ stock, quote }) {
                 <span>📈</span>
                 <span className="text-white/70">Shares:</span>
                 <span className="font-bold">
-                  {formatLargeNumber(parseFloat(stock.shares_outstanding) * 1000000)}
+                  {formatLargeNumber(parseFloat(stock.shares_outstanding))}
                 </span>
               </div>
             )}
