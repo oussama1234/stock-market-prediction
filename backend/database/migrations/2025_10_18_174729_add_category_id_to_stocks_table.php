@@ -16,6 +16,9 @@ return new class extends Migration
                   ->constrained('stock_categories')
                   ->onDelete('set null');
             
+            $table->boolean('is_popular')->default(false)->after('category_id')
+                  ->index()->comment('Popular stocks for homepage/search');
+            
             $table->index('category_id');
         });
     }
@@ -28,7 +31,7 @@ return new class extends Migration
         Schema::table('stocks', function (Blueprint $table) {
             $table->dropForeign(['category_id']);
             $table->dropIndex(['category_id']);
-            $table->dropColumn('category_id');
+            $table->dropColumn(['category_id', 'is_popular']);
         });
     }
 };
