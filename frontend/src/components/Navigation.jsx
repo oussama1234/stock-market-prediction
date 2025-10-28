@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import { useState, useEffect, useMemo, memo, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 function Navigation() {
@@ -10,6 +10,8 @@ function Navigation() {
     return saved ? JSON.parse(saved) : false;
   });
   const location = useLocation();
+  const mobileMenuRef = useRef(null);
+  const hamburgerRef = useRef(null);
 
   // Handle scroll effect
   useEffect(() => {
@@ -24,6 +26,27 @@ function Navigation() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
+
+  // Close mobile menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isMobileMenuOpen && 
+          mobileMenuRef.current && 
+          !mobileMenuRef.current.contains(event.target) &&
+          hamburgerRef.current &&
+          !hamburgerRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isMobileMenuOpen]);
 
   // Dark mode effect
   useEffect(() => {
@@ -106,13 +129,13 @@ function Navigation() {
                   </svg>
                 </div>
               </div>
-              <div className="hidden xs:block sm:block">
-                <h1 className={`text-sm sm:text-base md:text-xl font-black transition-all duration-300 group-hover:tracking-wide whitespace-nowrap ${
+              <div>
+                <h1 className={`text-xs sm:text-base md:text-xl font-black transition-all duration-300 group-hover:tracking-wide whitespace-nowrap ${
                   isDarkMode ? 'text-white' : 'text-gray-900'
                 }`}>
                   Market<span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 animate-gradient">AI</span>
                 </h1>
-                <p className={`text-[10px] sm:text-xs font-semibold transition-colors duration-300 whitespace-nowrap ${
+                <p className={`text-[9px] sm:text-xs font-semibold transition-colors duration-300 whitespace-nowrap ${
                   isDarkMode ? 'text-gray-400 group-hover:text-purple-400' : 'text-gray-600 group-hover:text-indigo-600'
                 }`}>
                   Stock Prediction
@@ -213,6 +236,7 @@ function Navigation() {
 
             {/* Mobile Menu Button */}
             <button
+              ref={hamburgerRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className={`md:hidden p-2 rounded-lg transition-colors duration-300 flex-shrink-0 ${
                 isDarkMode
@@ -234,6 +258,7 @@ function Navigation() {
 
         {/* Mobile Menu */}
         <div 
+          ref={mobileMenuRef}
           className={`md:hidden overflow-hidden transition-all duration-500 ${
             isMobileMenuOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
           }`}
