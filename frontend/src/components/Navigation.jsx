@@ -212,26 +212,6 @@ function Navigation() {
                   )}
                 </div>
               </button>
-
-              {/* CTA Button */}
-              <button className="group relative ml-2 px-6 py-2.5 overflow-hidden rounded-xl font-bold transition-all duration-500 hover:scale-105 hover:shadow-2xl">
-                {/* Animated gradient background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient"></div>
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                
-                {/* Glowing border effect */}
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-xl opacity-70 group-hover:opacity-100 blur group-hover:blur-md transition-all duration-500"></div>
-                
-                {/* Shimmer effect */}
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
-                
-                <span className="relative z-10 flex items-center gap-2 text-white">
-                  <svg className="w-5 h-5 transform group-hover:rotate-12 group-hover:scale-125 transition-all duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  <span className="group-hover:tracking-wider transition-all duration-300">Get Started</span>
-                </span>
-              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -311,10 +291,6 @@ function Navigation() {
                   <span>Dark Mode</span>
                 </>
               )}
-            </button>
-            
-            <button className="w-full mt-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-sm sm:text-base font-semibold rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
-              Get Started
             </button>
           </div>
         </div>
