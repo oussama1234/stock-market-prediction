@@ -192,7 +192,12 @@ export default function StockHeader({ stock, quote }) {
                 <span>💰</span>
                 <span className="text-white/70">Market Cap:</span>
                 <span className="font-bold">
-                  ${formatLargeNumber(parseFloat(stock.market_cap) * 1e6)}
+                  ${(() => {
+                    const val = parseFloat(stock.market_cap);
+                    // If value is less than 1B, it's stored in millions - multiply by 1M
+                    // If value is >= 1B, it's the full value - use as is
+                    return formatLargeNumber(val < 1e9 ? val * 1e6 : val);
+                  })()}
                 </span>
               </div>
             )}
@@ -201,7 +206,12 @@ export default function StockHeader({ stock, quote }) {
                 <span>📈</span>
                 <span className="text-white/70">Shares:</span>
                 <span className="font-bold">
-                  {formatLargeNumber(parseFloat(stock.shares_outstanding) * 1e6)}
+                  {(() => {
+                    const val = parseFloat(stock.shares_outstanding);
+                    // If value is less than 1B, it's stored in millions - multiply by 1M
+                    // If value is >= 1B, it's the full value - use as is
+                    return formatLargeNumber(val < 1e9 ? val * 1e6 : val);
+                  })()}
                 </span>
               </div>
             )}
